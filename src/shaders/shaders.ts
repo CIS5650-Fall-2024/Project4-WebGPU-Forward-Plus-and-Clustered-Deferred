@@ -8,13 +8,17 @@ import naiveVertRaw from './naive.vs.wgsl?raw';
 import naiveFragRaw from './naive.fs.wgsl?raw';
 
 import forwardPlusFragRaw from './forward_plus.fs.wgsl?raw';
+import forwardPlusDebugFragRaw from './forward_plus_debug.fs.wgsl?raw';
 
 import clusteredDeferredFragRaw from './clustered_deferred.fs.wgsl?raw';
+import clusteredDeferredPackedFragRaw from './clustered_deferred_pack.fs.wgsl?raw';
 import clusteredDeferredFullscreenVertRaw from './clustered_deferred_fullscreen.vs.wgsl?raw';
 import clusteredDeferredFullscreenFragRaw from './clustered_deferred_fullscreen.fs.wgsl?raw';
+import clusteredDeferredFullscreenPackedFragRaw from './clustered_deferred_fullscreen_pack.fs.wgsl?raw';
 
 import moveLightsComputeRaw from './move_lights.cs.wgsl?raw';
 import clusteringComputeRaw from './clustering.cs.wgsl?raw';
+import clusteringDebugComputeRaw from './clustering_debug.cs.wgsl?raw';
 
 // CONSTANTS (for use in shaders)
 // =================================
@@ -30,7 +34,9 @@ export const constants = {
 
     moveLightsWorkgroupSize: 128,
 
-    lightRadius: 2
+    lightRadius: 2,
+
+    maxLightPerCluster: 512,
 };
 
 // =================================
@@ -49,10 +55,14 @@ export const naiveVertSrc: string = processShaderRaw(naiveVertRaw);
 export const naiveFragSrc: string = processShaderRaw(naiveFragRaw);
 
 export const forwardPlusFragSrc: string = processShaderRaw(forwardPlusFragRaw);
+export const forwardPlusDebugFragSrc: string = processShaderRaw(forwardPlusDebugFragRaw);
 
 export const clusteredDeferredFragSrc: string = processShaderRaw(clusteredDeferredFragRaw);
+export const clusteredDeferredPackedFragSrc: string = processShaderRaw(clusteredDeferredPackedFragRaw);
 export const clusteredDeferredFullscreenVertSrc: string = processShaderRaw(clusteredDeferredFullscreenVertRaw);
 export const clusteredDeferredFullscreenFragSrc: string = processShaderRaw(clusteredDeferredFullscreenFragRaw);
+export const clusteredDeferredFullscreenFragPackedSrc: string = processShaderRaw(clusteredDeferredFullscreenPackedFragRaw);
 
 export const moveLightsComputeSrc: string = processShaderRaw(moveLightsComputeRaw);
 export const clusteringComputeSrc: string = processShaderRaw(clusteringComputeRaw);
+export const clusteringDebugComputeSrc: string = processShaderRaw(clusteringDebugComputeRaw);

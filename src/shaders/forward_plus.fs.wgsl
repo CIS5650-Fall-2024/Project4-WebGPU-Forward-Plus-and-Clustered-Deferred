@@ -14,3 +14,67 @@
 //     Add the calculated contribution to the total light accumulation.
 // Multiply the fragment’s diffuse color by the accumulated light contribution.
 // Return the final color, ensuring that the alpha component is set appropriately (typically to 1).
+@group(${bindGroup_scene}) @binding(0) var<uniform> cameraUniforms: CameraUniforms;
+@group(${bindGroup_scene}) @binding(1) var<storage, read> lightSet: LightSet;
+@group(${bindGroup_scene}) @binding(2) var<storage, read> clusterSet: ClusterSet;
+
+@group(${bindGroup_material}) @binding(0) var diffuseTex: texture_2d<f32>;
+@group(${bindGroup_material}) @binding(1) var diffuseTexSampler: sampler;
+
+struct FragmentInput
+{
+    @location(0) pos: vec3f,
+    @location(1) nor: vec3f,
+    @location(2) uv: vec2f
+}
+
+@fragment
+fn main(in: FragmentInput) -> @location(0) vec4f
+{
+    let diffuseColor = textureSample(diffuseTex, diffuseTexSampler, in.uv);
+    if (diffuseColor.a < 0.5f) {
+        discard;
+    }
+
+    let clipPos = cameraUniforms.viewProjMat * vec4(in.pos, 1.0);
+    let ndc = clipPos.xyz / clipPos.w;
+    let ndcXY01 = ndc * 0.5 + 0.5;
+    let epsilon = 0.0001;
+    let ndcX = clamp(ndcXY01.x, 0.0, 1.0 - epsilon);
+    let ndcY = clamp(ndcXY01.y, 0.0, 1.0 - epsilon);
+    let clusterX = u32(floor(ndcX * f32(clusterSet.numClustersX)));
+    let clusterY = u32(floor(ndcY * f32(clusterSet.numClustersY)));
+
+    let viewPos = cameraUniforms.viewMat * vec4(in.pos, 1.0);
+    let viewZ = viewPos.z; 
+    let zNear = cameraUniforms.nearPlane;
+    let zFar = cameraUniforms.farPlane;
+    let sliceCount = clusterSet.numClustersZ;
+    let logDepthRatio = log(zFar / zNear);
+    let viewZClamped = clamp(-viewZ, zNear, zFar); 
+
+    let clusterZf = (log(viewZClamped / zNear) / logDepthRatio) * f32(sliceCount);
+    var clusterZ = u32(floor(clusterZf));
+    clusterZ = clamp(clusterZ, 0u, clusterSet.numClustersZ - 1u);
+
+    var clusterIndex = clusterX + 
+                       clusterY * clusterSet.numClustersX + 
+                       clusterZ * clusterSet.numClustersX * clusterSet.numClustersY;
+
+    let maxClusterIndex = clusterSet.numClustersX * clusterSet.numClustersY * clusterSet.numClustersZ - 1u;
+    clusterIndex = clamp(clusterIndex, 0, maxClusterIndex);
+    let cluster = clusterSet.clusters[clusterIndex];
+
+    let numLightsInCluster = cluster.lightCount;
+    var totalLightContrib = vec3f(0.0, 0.0, 0.0);
+    for (var i = 0u; i < numLightsInCluster; i++) {
+        let lightIndex = cluster.lightIndices[i];
+        let light = lightSet.lights[lightIndex];
+
+        let lightContrib = calculateLightContrib(light, in.pos, in.nor);
+        totalLightContrib += lightContrib;
+    }
+
+    var finalColor = diffuseColor.rgb * totalLightContrib;
+    return vec4(finalColor, 1.0);
+}
