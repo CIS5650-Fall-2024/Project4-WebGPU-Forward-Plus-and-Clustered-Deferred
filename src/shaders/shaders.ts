@@ -8,6 +8,7 @@ import naiveVertRaw from './naive.vs.wgsl?raw';
 import naiveFragRaw from './naive.fs.wgsl?raw';
 
 import forwardPlusFragRaw from './forward_plus.fs.wgsl?raw';
+import forwardPlusVertRaw from './forward_plus.vs.wgsl?raw';
 
 import clusteredDeferredFragRaw from './clustered_deferred.fs.wgsl?raw';
 import clusteredDeferredFullscreenVertRaw from './clustered_deferred_fullscreen.vs.wgsl?raw';
@@ -15,6 +16,10 @@ import clusteredDeferredFullscreenFragRaw from './clustered_deferred_fullscreen.
 
 import moveLightsComputeRaw from './move_lights.cs.wgsl?raw';
 import clusteringComputeRaw from './clustering.cs.wgsl?raw';
+
+import fullscreenVertexRAW from './clustered_deferred_fullscreen.vs.wgsl?raw';
+import fullscreenFragRAW from './clustered_deferred_fullscreen.fs.wgsl?raw';
+import clusterDeferredRAW from './clustered_deferred.fs.wgsl?raw';
 
 // CONSTANTS (for use in shaders)
 // =================================
@@ -27,10 +32,21 @@ export const constants = {
     bindGroup_scene: 0,
     bindGroup_model: 1,
     bindGroup_material: 2,
+    bindGroup_fullscreen: 1,
 
     moveLightsWorkgroupSize: 128,
+    lightRadius: 2,
+    MAX_LIGHTS_PER_CLUSTER: 1024,
 
-    lightRadius: 2
+    WORKGROUP_SIZE_X: 8,
+    WORKGROUP_SIZE_Y: 8,
+    WORKGROUP_SIZE_Z: 4,
+
+    clusterXsize : 16,
+    clusterYsize : 9,
+    clusterZsize : 24,
+    
+    
 };
 
 // =================================
@@ -49,6 +65,7 @@ export const naiveVertSrc: string = processShaderRaw(naiveVertRaw);
 export const naiveFragSrc: string = processShaderRaw(naiveFragRaw);
 
 export const forwardPlusFragSrc: string = processShaderRaw(forwardPlusFragRaw);
+export const forwardPlusVertSrc: string = processShaderRaw(forwardPlusVertRaw);
 
 export const clusteredDeferredFragSrc: string = processShaderRaw(clusteredDeferredFragRaw);
 export const clusteredDeferredFullscreenVertSrc: string = processShaderRaw(clusteredDeferredFullscreenVertRaw);
@@ -56,3 +73,7 @@ export const clusteredDeferredFullscreenFragSrc: string = processShaderRaw(clust
 
 export const moveLightsComputeSrc: string = processShaderRaw(moveLightsComputeRaw);
 export const clusteringComputeSrc: string = processShaderRaw(clusteringComputeRaw);
+
+export const fullscreenVertexScr: string = processShaderRaw(fullscreenVertexRAW);
+export const fullscreenFragSrc: string = processShaderRaw(fullscreenFragRAW);
+export const clusterDeferredSrc: string = processShaderRaw(clusterDeferredRAW);

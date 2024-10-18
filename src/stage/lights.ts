@@ -30,6 +30,16 @@ export class Lights {
 
     // TODO-2: add layouts, pipelines, textures, etc. needed for light clustering here
 
+    
+    clusterSetStorageBuffer: GPUBuffer;
+    
+    
+    clusterLightsComputeBindGroupLayout: GPUBindGroupLayout;
+    clusterLightsComputeBindGroup: GPUBindGroup;
+    clusterLightsComputePipeline: GPUComputePipeline;
+
+
+
     constructor(camera: Camera) {
         this.camera = camera;
 
@@ -94,7 +104,68 @@ export class Lights {
         });
 
         // TODO-2: initialize layouts, pipelines, textures, etc. needed for light clustering here
+        
+        
+        const numClusters = shaders.constants.clusterXsize * shaders.constants.clusterYsize * shaders.constants.clusterZsize;
+
+        const clusterStride = 7 + 1 + shaders.constants.MAX_LIGHTS_PER_CLUSTER; // 7 for AABB  + 1 for numLights + 1032 for lightIndices
+        
+
+        this.clusterSetStorageBuffer = device.createBuffer({
+            label: "cluster set",
+            size: 16 + numClusters* clusterStride * 4, 
+            usage: GPUBufferUsage.STORAGE ,
+        });
+        
+        
+
+        
+        
+
+
+
+
+
+
+        this.clusterLightsComputeBindGroupLayout = device.createBindGroupLayout({
+            label: "Cluster Lights Bind Group Layout",
+            entries: [
+                { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } }, // Camera Uniforms
+                { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } }, // Lights
+                { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } }, // Cluster Data
+               
+            ],
+        });
+
+        this.clusterLightsComputeBindGroup = device.createBindGroup({
+            layout: this.clusterLightsComputeBindGroupLayout,
+            entries: [
+                { binding: 0, resource: { buffer: this.camera.uniformsBuffer } },
+                { binding: 1, resource: { buffer: this.lightSetStorageBuffer } },
+                { binding: 2, resource: { buffer: this.clusterSetStorageBuffer } },
+                
+            ],
+        });
+
+
+        this.clusterLightsComputePipeline = device.createComputePipeline({
+            label: "Cluster Lights Compute Pipeline",
+            layout: device.createPipelineLayout({
+                label: "Cluster Lights Compute Pipeline Layout",
+                bindGroupLayouts: [this.clusterLightsComputeBindGroupLayout],
+            }),
+            compute: {
+                module: device.createShaderModule({
+                    label: "Cluster Lights Compute Shader",
+                    code: shaders.clusteringComputeSrc, // Compute shader for clustering
+                }),
+                entryPoint: "main",
+            },
+        });
+
+       
     }
+    
 
     private populateLightsBuffer() {
         for (let lightIdx = 0; lightIdx < Lights.maxNumLights; ++lightIdx) {
@@ -113,6 +184,20 @@ export class Lights {
     doLightClustering(encoder: GPUCommandEncoder) {
         // TODO-2: run the light clustering compute pass(es) here
         // implementing clustering here allows for reusing the code in both Forward+ and Clustered Deferred
+
+        const computePass = encoder.beginComputePass();
+        computePass.setPipeline(this.clusterLightsComputePipeline);
+        computePass.setBindGroup(0, this.clusterLightsComputeBindGroup);
+
+        const [clusterCountX, clusterCountY, clusterCountZ] = [shaders.constants.clusterXsize, shaders.constants.clusterYsize, shaders.constants.clusterZsize];
+        const dispatchX = Math.ceil(clusterCountX / shaders.constants.WORKGROUP_SIZE_X);
+        const dispatchY = Math.ceil(clusterCountY / shaders.constants.WORKGROUP_SIZE_Y);
+        const dispatchZ = Math.ceil(clusterCountZ / shaders.constants.WORKGROUP_SIZE_Z);
+
+
+       
+        computePass.dispatchWorkgroups(dispatchX, dispatchY, dispatchZ);
+        computePass.end();
     }
 
     // CHECKITOUT: this is where the light movement compute shader is dispatched from the host
@@ -132,6 +217,7 @@ export class Lights {
 
         computePass.end();
 
+        
         device.queue.submit([encoder.finish()]);
     }
 }
