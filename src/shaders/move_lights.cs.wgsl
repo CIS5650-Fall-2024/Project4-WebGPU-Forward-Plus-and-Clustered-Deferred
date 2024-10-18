@@ -1,5 +1,6 @@
-@group(${bindGroup_scene}) @binding(0) var<storage, read_write> lightSet: LightSet;
-@group(${bindGroup_scene}) @binding(1) var<uniform> time: f32;
+@group(0) @binding(0) var<uniform> camUniforms: CameraUniforms;
+@group(1) @binding(0) var<storage, read_write> lightSet: LightSet;
+@group(1) @binding(1) var<uniform> time: f32;
 
 // https://gist.github.com/munrocket/236ed5ba7e409b8bdf1ff6eca5dcdc39
 // MIT License. © Stefan Gustavson, Munrocket
@@ -58,9 +59,11 @@ fn main(@builtin(global_invocation_id) globalIdx: vec3u) {
 
     let scaledTime = time / 5000.f;
 
-    let noise = perlin3(lightIdx, scaledTime);
+    let noise = perlin3(lightSet.lights[lightIdx].idx, scaledTime);
     // perlin noise rarely reaches the extremes (-1 and 1), so scale accordingly here to ensure lights reach
     // the bounding box's sides
     let scaledNoise = (noise + 0.5) * 0.8;
-    lightSet.lights[lightIdx].pos = mix(bboxMin, bboxMax, scaledNoise);
+    var lightPos = vec4f(mix(bboxMin, bboxMax, scaledNoise), 1.f);
+    lightPos = camUniforms.view * lightPos;
+    lightSet.lights[lightIdx].pos = lightPos.xyz;
 }
