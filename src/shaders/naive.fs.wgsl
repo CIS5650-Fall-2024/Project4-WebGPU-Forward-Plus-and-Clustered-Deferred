@@ -1,4 +1,4 @@
-@group(${bindGroup_scene}) @binding(1) var<storage, read> lightSet: LightSet;
+@group(${bindGroup_scene}) @binding(2) var<storage, read> lightSet: LightSet;
 
 @group(${bindGroup_material}) @binding(0) var diffuseTex: texture_2d<f32>;
 @group(${bindGroup_material}) @binding(1) var diffuseTexSampler: sampler;
@@ -17,6 +17,9 @@ fn main(in: FragmentInput) -> @location(0) vec4f
     if (diffuseColor.a < 0.5f) {
         discard;
     }
+
+    // let nor = in.nor * 0.5 + 0.5;
+    // return vec4f(nor, 1.0);
 
     var totalLightContrib = vec3f(0, 0, 0);
     for (var lightIdx = 0u; lightIdx < lightSet.numLights; lightIdx++) {
