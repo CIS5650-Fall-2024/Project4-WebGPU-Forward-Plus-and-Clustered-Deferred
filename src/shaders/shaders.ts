@@ -16,6 +16,10 @@ import clusteredDeferredFullscreenFragRaw from './clustered_deferred_fullscreen.
 import moveLightsComputeRaw from './move_lights.cs.wgsl?raw';
 import clusteringComputeRaw from './clustering.cs.wgsl?raw';
 
+import bitonicSortComputeRaw from './bitonic_sort.cs.wgsl?raw';
+import zbinningLightsComputeRaw from './zbinning_lights.cs.wgsl?raw';
+import lightClustersComputeRaw from './cluster_lights.cs.wgsl?raw';
+
 // CONSTANTS (for use in shaders)
 // =================================
 
@@ -27,10 +31,17 @@ export const constants = {
     bindGroup_scene: 0,
     bindGroup_model: 1,
     bindGroup_material: 2,
+    bindGroup_lightCluster: 3,
 
     moveLightsWorkgroupSize: 128,
 
-    lightRadius: 2
+    lightRadius: 2.0,
+
+    zMin: 0.1,
+    zMax: 30.0,
+    zBinSize: 64,
+    tileSize: 32,
+    maxLightsPerTile: 4096,
 };
 
 // =================================
@@ -56,3 +67,6 @@ export const clusteredDeferredFullscreenFragSrc: string = processShaderRaw(clust
 
 export const moveLightsComputeSrc: string = processShaderRaw(moveLightsComputeRaw);
 export const clusteringComputeSrc: string = processShaderRaw(clusteringComputeRaw);
+export const bitonicSortComputeSrc: string = processShaderRaw(bitonicSortComputeRaw);
+export const zbinningLightsComputeSrc: string = processShaderRaw(zbinningLightsComputeRaw);
+export const lightClustersComputeSrc: string = processShaderRaw(lightClustersComputeRaw);
