@@ -12,6 +12,9 @@ export var canvasTextureView: GPUTextureView;
 export var aspectRatio: number;
 export const fovYDegrees = 45;
 
+// this is dependant on hardware
+export const maxColorAttachmentsBytesPerSample = 32; 
+
 export var modelBindGroupLayout: GPUBindGroupLayout;
 export var materialBindGroupLayout: GPUBindGroupLayout;
 
@@ -39,9 +42,15 @@ export async function initWebGPU() {
     if (!adapter)
     {
         throw new Error("no appropriate GPUAdapter found");
+    } else if (adapter.limits.maxColorAttachmentBytesPerSample < maxColorAttachmentsBytesPerSample) {
+        throw new Error(`no GPU found with maxColorAttachmentsBytesPerSample limit: ${maxColorAttachmentsBytesPerSample}. Limit is: ${adapter.limits.maxColorAttachmentBytesPerSample}`);
     }
 
-    device = await adapter.requestDevice();
+    device = await adapter?.requestDevice({
+        requiredLimits: {
+          maxColorAttachmentBytesPerSample: maxColorAttachmentsBytesPerSample,
+        }
+    });
 
     context = canvas.getContext("webgpu")!;
     canvasFormat = navigator.gpu.getPreferredCanvasFormat();
@@ -117,7 +126,11 @@ export abstract class Renderer {
         this.camera = stage.camera;
         this.stats = stage.stats;
 
-        this.frameRequestId = requestAnimationFrame((t) => this.onFrame(t));
+        this.frameRequestId = 0; 
+    }
+
+    start(): void {
+        requestAnimationFrame((t) => this.onFrame(t)); 
     }
 
     stop(): void {

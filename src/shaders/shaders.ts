@@ -21,15 +21,16 @@ import clusteringComputeRaw from './clustering.cs.wgsl?raw';
 
 // CHECKITOUT: feel free to add more constants here and to refer to them in your shader code
 
-// Note that these are declared in a somewhat roundabout way because otherwise minification will drop variables
-// that are unused in host side code.
+// Must be declared as export const, otherwise typescript will remove these constants when tsc builds
 export const constants = {
     bindGroup_scene: 0,
     bindGroup_model: 1,
     bindGroup_material: 2,
-
+    bindGroup_framebuffer: 1,
+    numLightIndices: 1000,
+    clusterWorkgroupSize: [4, 4, 4],    
+    clusterSize: [16, 9, 24],
     moveLightsWorkgroupSize: 128,
-
     lightRadius: 2
 };
 

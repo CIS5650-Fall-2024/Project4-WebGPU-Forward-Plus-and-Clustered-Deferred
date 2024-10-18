@@ -10,11 +10,38 @@ struct LightSet {
     lights: array<Light>
 }
 
-// TODO-2: you may want to create a ClusterSet struct similar to LightSet
+// struct ClusterIntersection {
+//     clusterIdx: u32,
+//     lightIdx: u32
+// }
+
+struct Cluster {
+    minPoint: vec4f,
+    maxPoint: vec4f,
+    numLights: u32,
+    lightIndices: array<u32, ${numLightIndices}>
+}
+
+struct ClusterSet {
+    numClusters: u32, 
+    clusters: array<Cluster>
+}
 
 struct CameraUniforms {
-    // TODO-1.3: add an entry for the view proj mat (of type mat4x4f)
+    viewProjMat: mat4x4f,
+    viewMat: mat4x4f,
+    canvasSize: vec2f,
+    cameraUp: vec3f,
+    cameraRight: vec3f,
+    fovRadians: f32,
+    aspectRatio: f32,
+    projMatInverse: mat4x4f
 }
+
+// number of clusters in xyz
+const numGrid = vec3<u32>(${clusterSize}); 
+const zNear : f32 = 0.1; 
+const zFar : f32 = 60.0;    // arbitrary value that fits the sponza scene
 
 // CHECKITOUT: this special attenuation function ensures lights don't affect geometry outside the maximum light radius
 fn rangeAttenuation(distance: f32) -> f32 {

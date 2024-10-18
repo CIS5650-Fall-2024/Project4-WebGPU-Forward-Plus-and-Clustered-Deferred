@@ -39,18 +39,21 @@ function setRenderer(mode: string) {
     switch (mode) {
         case renderModes.naive:
             renderer = new NaiveRenderer(stage);
+            renderer.start(); 
             break;
         case renderModes.forwardPlus:
             renderer = new ForwardPlusRenderer(stage);
+            renderer.start(); 
             break;
         case renderModes.clusteredDeferred:
             renderer = new ClusteredDeferredRenderer(stage);
+            renderer.start(); 
             break;
     }
 }
 
 const renderModes = { naive: 'naive', forwardPlus: 'forward+', clusteredDeferred: 'clustered deferred' };
-let renderModeController = gui.add({ mode: renderModes.naive }, 'mode', renderModes);
+let renderModeController = gui.add({ mode: renderModes.clusteredDeferred }, 'mode', renderModes);
 renderModeController.onChange(setRenderer);
 
 setRenderer(renderModeController.getValue());
