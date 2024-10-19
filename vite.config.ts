@@ -1,8 +1,8 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from "vite";
 
 export default defineConfig({
     build: {
-        target: 'esnext'
+        target: "esnext",
     },
-    base: process.env.GITHUB_ACTIONS_BASE || undefined
-})
+    base: process.env.GITHUB_ACTIONS_BASE || undefined,
+});

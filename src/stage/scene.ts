@@ -5,11 +5,22 @@ so you may run into issues loading files outside of the Sponza scene.
 In particular, it is known to not work if there is a mesh with no material.
 */
 
-import { registerLoaders, load } from '@loaders.gl/core';
-import { GLTFLoader, GLTFWithBuffers, GLTFMesh, GLTFMeshPrimitive, GLTFMaterial, GLTFSampler } from '@loaders.gl/gltf';
-import { ImageLoader } from '@loaders.gl/images';
-import { Mat4, mat4 } from 'wgpu-matrix';
-import { device, materialBindGroupLayout, modelBindGroupLayout } from '../renderer';
+import { registerLoaders, load } from "@loaders.gl/core";
+import {
+    GLTFLoader,
+    GLTFWithBuffers,
+    GLTFMesh,
+    GLTFMeshPrimitive,
+    GLTFMaterial,
+    GLTFSampler,
+} from "@loaders.gl/gltf";
+import { ImageLoader } from "@loaders.gl/images";
+import { Mat4, mat4 } from "wgpu-matrix";
+import {
+    device,
+    materialBindGroupLayout,
+    modelBindGroupLayout,
+} from "../renderer";
 
 export function setupLoaders() {
     registerLoaders([GLTFLoader, ImageLoader]);
@@ -20,8 +31,15 @@ function getFloatArray(gltfWithBuffers: GLTFWithBuffers, attribute: number) {
     const accessor = gltf.accessors![attribute];
     const bufferView = gltf.bufferViews![accessor.bufferView!];
     const buffer = gltfWithBuffers.buffers[bufferView.buffer];
-    const byteOffset = (accessor.byteOffset ?? 0) + (bufferView.byteOffset ?? 0) + buffer.byteOffset;
-    return new Float32Array(buffer.arrayBuffer, byteOffset, bufferView.byteLength / 4);
+    const byteOffset =
+        (accessor.byteOffset ?? 0) +
+        (bufferView.byteOffset ?? 0) +
+        buffer.byteOffset;
+    return new Float32Array(
+        buffer.arrayBuffer,
+        byteOffset,
+        bufferView.byteLength / 4
+    );
 }
 
 class Texture {
@@ -43,7 +61,10 @@ export class Material {
     constructor(gltfMaterial: GLTFMaterial, textures: Texture[]) {
         this.id = Material.nextId++;
 
-        const diffuseTexture = textures[gltfMaterial.pbrMetallicRoughness!.baseColorTexture!.index];
+        const diffuseTexture =
+            textures[
+                gltfMaterial.pbrMetallicRoughness!.baseColorTexture!.index
+            ];
 
         this.materialBindGroup = device.createBindGroup({
             label: "material bind group",
@@ -51,13 +72,13 @@ export class Material {
             entries: [
                 {
                     binding: 0,
-                    resource: diffuseTexture.image.createView()
+                    resource: diffuseTexture.image.createView(),
                 },
                 {
                     binding: 1,
-                    resource: diffuseTexture.sampler
-                }
-            ]
+                    resource: diffuseTexture.sampler,
+                },
+            ],
         });
     }
 }
@@ -69,35 +90,63 @@ export class Primitive {
 
     material: Material;
 
-    constructor(gltfPrim: GLTFMeshPrimitive, gltfWithBuffers: GLTFWithBuffers, material: Material) {
+    constructor(
+        gltfPrim: GLTFMeshPrimitive,
+        gltfWithBuffers: GLTFWithBuffers,
+        material: Material
+    ) {
         this.material = material;
 
         const gltf = gltfWithBuffers.json;
 
         const indicesAccessor = gltf.accessors![gltfPrim.indices!];
-        const indicesBufferView = gltf.bufferViews![indicesAccessor.bufferView!];
+        const indicesBufferView =
+            gltf.bufferViews![indicesAccessor.bufferView!];
         const indicesDataType = indicesAccessor.componentType;
         const indicesBuffer = gltfWithBuffers.buffers[indicesBufferView.buffer];
-        const indicesByteOffset = (indicesAccessor.byteOffset ?? 0)
-            + (indicesBufferView.byteOffset ?? 0)
-            + indicesBuffer.byteOffset;
+        const indicesByteOffset =
+            (indicesAccessor.byteOffset ?? 0) +
+            (indicesBufferView.byteOffset ?? 0) +
+            indicesBuffer.byteOffset;
         let indicesArray: Uint32Array;
         // hardcoding webgl constants, very silly
         switch (indicesDataType) {
             case 0x1403: // UNSIGNED_SHORT
                 indicesArray = Uint32Array.from(
-                    new Uint16Array(indicesBuffer.arrayBuffer, indicesByteOffset, indicesAccessor.count));
+                    new Uint16Array(
+                        indicesBuffer.arrayBuffer,
+                        indicesByteOffset,
+                        indicesAccessor.count
+                    )
+                );
                 break;
             case 0x1405: // UNSIGNED_INT (untested)
-                indicesArray = new Uint32Array(indicesBuffer.arrayBuffer, indicesByteOffset, indicesAccessor.count);
+                indicesArray = new Uint32Array(
+                    indicesBuffer.arrayBuffer,
+                    indicesByteOffset,
+                    indicesAccessor.count
+                );
                 break;
             default:
-                throw new Error(`unsupported index buffer element component type: 0x${indicesDataType.toString(16)}`);
+                throw new Error(
+                    `unsupported index buffer element component type: 0x${indicesDataType.toString(
+                        16
+                    )}`
+                );
         }
 
-        const positionsArray = getFloatArray(gltfWithBuffers, gltfPrim.attributes.POSITION);
-        const normalsArray = getFloatArray(gltfWithBuffers, gltfPrim.attributes.NORMAL);
-        const uvsArray = getFloatArray(gltfWithBuffers, gltfPrim.attributes.TEXCOORD_0);
+        const positionsArray = getFloatArray(
+            gltfWithBuffers,
+            gltfPrim.attributes.POSITION
+        );
+        const normalsArray = getFloatArray(
+            gltfWithBuffers,
+            gltfPrim.attributes.NORMAL
+        );
+        const uvsArray = getFloatArray(
+            gltfWithBuffers,
+            gltfPrim.attributes.TEXCOORD_0
+        );
 
         const numFloatsPerVert = 8;
         const numVerts = positionsArray.length / 3;
@@ -135,9 +184,19 @@ export class Primitive {
 export class Mesh {
     primitives: Primitive[] = [];
 
-    constructor(gltfMesh: GLTFMesh, gltfWithBuffers: GLTFWithBuffers, sceneMaterials: Material[]) {
+    constructor(
+        gltfMesh: GLTFMesh,
+        gltfWithBuffers: GLTFWithBuffers,
+        sceneMaterials: Material[]
+    ) {
         gltfMesh.primitives.forEach((gltfPrim: GLTFMeshPrimitive) => {
-            this.primitives.push(new Primitive(gltfPrim, gltfWithBuffers, sceneMaterials[gltfPrim.material!]));
+            this.primitives.push(
+                new Primitive(
+                    gltfPrim,
+                    gltfWithBuffers,
+                    sceneMaterials[gltfPrim.material!]
+                )
+            );
         });
 
         this.primitives.sort((primA: Primitive, primB: Primitive) => {
@@ -182,7 +241,11 @@ export class Node {
                 usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
             });
 
-            device.queue.writeBuffer(this.modelMatUniformBuffer, 0, this.transform);
+            device.queue.writeBuffer(
+                this.modelMatUniformBuffer,
+                0,
+                this.transform
+            );
 
             this.modelBindGroup = device.createBindGroup({
                 label: "model bind group",
@@ -190,9 +253,9 @@ export class Node {
                 entries: [
                     {
                         binding: 0,
-                        resource: { buffer: this.modelMatUniformBuffer }
-                    }
-                ]
+                        resource: { buffer: this.modelMatUniformBuffer },
+                    },
+                ],
             });
         }
 
@@ -205,8 +268,11 @@ export class Node {
 function createTexture(imageBitmap: ImageBitmap): GPUTexture {
     let texture = device.createTexture({
         size: [imageBitmap.width, imageBitmap.height],
-        format: 'rgba8unorm',
-        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT
+        format: "rgba8unorm",
+        usage:
+            GPUTextureUsage.TEXTURE_BINDING |
+            GPUTextureUsage.COPY_DST |
+            GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
     device.queue.copyExternalImageToTexture(
@@ -221,13 +287,15 @@ function createTexture(imageBitmap: ImageBitmap): GPUTexture {
 function convertWrapModeEnum(wrapMode: number): GPUAddressMode {
     switch (wrapMode) {
         case 0x2901: // REPEAT
-            return 'repeat';
-        case 0x812F: // CLAMP_TO_EDGE
-            return 'clamp-to-edge';
+            return "repeat";
+        case 0x812f: // CLAMP_TO_EDGE
+            return "clamp-to-edge";
         case 0x8370: // MIRRORED_REPEAT
-            return 'mirror-repeat';
+            return "mirror-repeat";
         default:
-            throw new Error(`unsupported wrap mode: 0x${wrapMode.toString(16)}`);
+            throw new Error(
+                `unsupported wrap mode: 0x${wrapMode.toString(16)}`
+            );
     }
 }
 
@@ -236,40 +304,44 @@ function createSampler(gltfSampler: GLTFSampler): GPUSampler {
 
     switch (gltfSampler.magFilter) {
         case 0x2600: // NEAREST
-            samplerDescriptor.magFilter = 'nearest';
+            samplerDescriptor.magFilter = "nearest";
             break;
         case 0x2601: // LINEAR
-            samplerDescriptor.magFilter = 'linear';
+            samplerDescriptor.magFilter = "linear";
             break;
         default:
-            throw new Error(`unsupported magFilter: 0x${gltfSampler.magFilter!.toString(16)}`);
+            throw new Error(
+                `unsupported magFilter: 0x${gltfSampler.magFilter!.toString(16)}`
+            );
     }
 
     switch (gltfSampler.minFilter) {
         case 0x2600: // NEAREST
-            samplerDescriptor.minFilter = 'nearest';
+            samplerDescriptor.minFilter = "nearest";
             break;
         case 0x2601: // LINEAR
-            samplerDescriptor.minFilter = 'linear';
+            samplerDescriptor.minFilter = "linear";
             break;
         case 0x2700: // NEAREST_MIPMAP_NEAREST
-            samplerDescriptor.minFilter = 'nearest';
-            samplerDescriptor.mipmapFilter = 'nearest';
+            samplerDescriptor.minFilter = "nearest";
+            samplerDescriptor.mipmapFilter = "nearest";
             break;
         case 0x2701: // LINEAR_MIPMAP_NEAREST
-            samplerDescriptor.minFilter = 'linear';
-            samplerDescriptor.mipmapFilter = 'nearest';
+            samplerDescriptor.minFilter = "linear";
+            samplerDescriptor.mipmapFilter = "nearest";
             break;
         case 0x2702: // NEAREST_MIPMAP_LINEAR
-            samplerDescriptor.minFilter = 'nearest';
-            samplerDescriptor.mipmapFilter = 'linear';
+            samplerDescriptor.minFilter = "nearest";
+            samplerDescriptor.mipmapFilter = "linear";
             break;
         case 0x2703: // LINEAR_MIPMAP_LINEAR
-            samplerDescriptor.minFilter = 'linear';
-            samplerDescriptor.mipmapFilter = 'linear';
+            samplerDescriptor.minFilter = "linear";
+            samplerDescriptor.mipmapFilter = "linear";
             break;
         default:
-            throw new Error(`unsupported minFilter: 0x${gltfSampler.minFilter!.toString(16)}`);
+            throw new Error(
+                `unsupported minFilter: 0x${gltfSampler.minFilter!.toString(16)}`
+            );
     }
 
     samplerDescriptor.addressModeU = convertWrapModeEnum(gltfSampler.wrapS!);
@@ -286,14 +358,14 @@ export class Scene {
     }
 
     async loadGltf(filePath: string) {
-        const gltfWithBuffers = await load(filePath) as GLTFWithBuffers;
+        const gltfWithBuffers = (await load(filePath)) as GLTFWithBuffers;
         const gltf = gltfWithBuffers.json;
 
         let sceneTextures: Texture[] = [];
         {
             let sceneImages: GPUTexture[] = [];
             for (let gltfImage of gltfWithBuffers.images!) {
-                sceneImages.push(createTexture(gltfImage as ImageBitmap))
+                sceneImages.push(createTexture(gltfImage as ImageBitmap));
             }
 
             let sceneSamplers: GPUSampler[] = [];
@@ -302,7 +374,12 @@ export class Scene {
             }
 
             for (let gltfTexture of gltf.textures!) {
-                sceneTextures.push(new Texture(sceneImages[gltfTexture.source!], sceneSamplers[gltfTexture.sampler!]));
+                sceneTextures.push(
+                    new Texture(
+                        sceneImages[gltfTexture.source!],
+                        sceneSamplers[gltfTexture.sampler!]
+                    )
+                );
             }
         }
 
@@ -313,7 +390,9 @@ export class Scene {
 
         let sceneMeshes: Mesh[] = [];
         for (let gltfMesh of gltf.meshes!) {
-            sceneMeshes.push(new Mesh(gltfMesh, gltfWithBuffers, sceneMaterials));
+            sceneMeshes.push(
+                new Mesh(gltfMesh, gltfWithBuffers, sceneMaterials)
+            );
         }
 
         let sceneRoot: Node = new Node();
@@ -334,15 +413,24 @@ export class Scene {
                 newNode.transform = new Float32Array(gltfNode.matrix);
             } else {
                 if (gltfNode.translation != undefined) {
-                    newNode.transform = mat4.mul(newNode.transform, mat4.translation(gltfNode.translation));
+                    newNode.transform = mat4.mul(
+                        newNode.transform,
+                        mat4.translation(gltfNode.translation)
+                    );
                 }
 
                 if (gltfNode.rotation != undefined) {
-                    newNode.transform = mat4.mul(newNode.transform, mat4.fromQuat(gltfNode.rotation));
+                    newNode.transform = mat4.mul(
+                        newNode.transform,
+                        mat4.fromQuat(gltfNode.rotation)
+                    );
                 }
 
                 if (gltfNode.scale != undefined) {
-                    newNode.transform = mat4.mul(newNode.transform, mat4.scaling(gltfNode.scale));
+                    newNode.transform = mat4.mul(
+                        newNode.transform,
+                        mat4.scaling(gltfNode.scale)
+                    );
                 }
             }
 
@@ -364,8 +452,11 @@ export class Scene {
         sceneRoot.propagateTransformations();
     }
 
-    iterate(nodeFunction: (node: Node) => void, materialFunction: (material: Material) => void,
-        primFunction: (primitive: Primitive) => void) {
+    iterate(
+        nodeFunction: (node: Node) => void,
+        materialFunction: (material: Material) => void,
+        primFunction: (primitive: Primitive) => void
+    ) {
         let nodes = [this.root];
 
         let lastMaterialId: number | undefined = undefined;
