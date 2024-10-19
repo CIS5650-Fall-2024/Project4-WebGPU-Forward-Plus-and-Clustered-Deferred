@@ -39,9 +39,11 @@ function setRenderer(mode: string) {
     switch (mode) {
         case renderModes.naive:
             renderer = new NaiveRenderer(stage);
+            renderer.setCluster(0);
             break;
         case renderModes.forwardPlus:
             renderer = new ForwardPlusRenderer(stage);
+            renderer.setCluster(1); // debug change 0 -> 1
             break;
         case renderModes.clusteredDeferred:
             renderer = new ClusteredDeferredRenderer(stage);

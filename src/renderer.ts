@@ -105,7 +105,7 @@ export abstract class Renderer {
     protected scene: Scene;
     protected lights: Lights;
     protected camera: Camera;
-
+    protected isCluster: boolean;
     protected stats: Stats;
 
     private prevTime: number = 0;
@@ -123,6 +123,9 @@ export abstract class Renderer {
     stop(): void {
         cancelAnimationFrame(this.frameRequestId);
     }
+    setCluster(n: number): void {
+        n == 0 ? this.isCluster = false : this.isCluster = true;
+    }
 
     protected abstract draw(): void;
 
@@ -134,7 +137,7 @@ export abstract class Renderer {
 
         let deltaTime = time - this.prevTime;
         this.camera.onFrame(deltaTime);
-        this.lights.onFrame(time);
+        this.lights.onFrame(time, this.isCluster);
 
         this.stats.begin();
 
