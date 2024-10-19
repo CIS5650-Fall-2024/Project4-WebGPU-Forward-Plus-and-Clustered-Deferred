@@ -28,7 +28,17 @@ export const constants = {
     bindGroup_model: 1,
     bindGroup_material: 2,
 
+    // For deferred rendering / post-processing
+    bindGroup_framebuffer: 1,
+
     moveLightsWorkgroupSize: 128,
+
+    computeClustersWorkgroupSize: [3, 3, 3],
+
+    numClustersX: 24,
+    numClustersY: 24,
+    numClustersZ: 24,
+    maxLightsPerCluster: 1000,
 
     lightRadius: 2
 };
