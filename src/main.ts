@@ -5,6 +5,9 @@ import { initWebGPU, Renderer } from './renderer';
 import { NaiveRenderer } from './renderers/naive';
 import { ForwardPlusRenderer } from './renderers/forward_plus';
 import { ClusteredDeferredRenderer } from './renderers/clustered_deferred';
+import { OptimizedClusteredDeferredRenderer } from './renderers/optimized_clustered_deferred.ts';
+import { PostProcessingRenderer } from './renderers/post_processing.ts';
+import { PackedClusteredDeferredRenderer } from './renderers/packed_clustered_deferred';
 
 import { setupLoaders, Scene } from './stage/scene';
 import { Lights } from './stage/lights';
@@ -46,10 +49,26 @@ function setRenderer(mode: string) {
         case renderModes.clusteredDeferred:
             renderer = new ClusteredDeferredRenderer(stage);
             break;
+        // case renderModes.packedClusteredDeferred:
+        //     renderer = new PackedClusteredDeferredRenderer(stage);
+        //     break;
+        // case renderModes.optimizedClusteredDeferred:
+        //     renderer = new OptimizedClusteredDeferredRenderer(stage);
+        //     break;
+        // case renderModes.postProcessing:
+        //     renderer = new PostProcessingRenderer(stage);
+        //     break;
     }
 }
 
-const renderModes = { naive: 'naive', forwardPlus: 'forward+', clusteredDeferred: 'clustered deferred' };
+const renderModes = {
+     naive: 'naive',
+     forwardPlus: 'forward+',
+    clusteredDeferred: 'clustered deferred',
+    //packedClusteredDeferred: 'packed clustered deferred',
+    // optimizedClusteredDeferred: 'optimized clustered deferred',
+    // postProcessing: 'post-processing',
+ };
 let renderModeController = gui.add({ mode: renderModes.naive }, 'mode', renderModes);
 renderModeController.onChange(setRenderer);
 
