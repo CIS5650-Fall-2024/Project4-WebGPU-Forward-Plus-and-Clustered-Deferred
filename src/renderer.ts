@@ -22,6 +22,8 @@ export async function initWebGPU() {
     const devicePixelRatio = window.devicePixelRatio;
     canvas.width = canvas.clientWidth * devicePixelRatio;
     canvas.height = canvas.clientHeight * devicePixelRatio;
+    console.log("InitWebGPU: The canvas width is: ", canvas.width);
+    console.log("InitWebGPU: The canvas height is: ", canvas.height);
 
     aspectRatio = canvas.width / canvas.height;
 
@@ -51,6 +53,13 @@ export async function initWebGPU() {
     });
 
     console.log("WebGPU init successsful");
+    //check device limits
+    const limits = device.limits;
+    console.log("Max workgroup size X:", limits.maxComputeWorkgroupSizeX);
+    console.log("Max workgroup size Y:", limits.maxComputeWorkgroupSizeY);
+    console.log("Max workgroup size Z:", limits.maxComputeWorkgroupSizeZ);
+    console.log("Max total workgroup size:", limits.maxComputeInvocationsPerWorkgroup);
+    console.log("Max workgroups per dimension (X, Y, Z):", device.limits.maxComputeWorkgroupsPerDimension);
 
     modelBindGroupLayout = device.createBindGroupLayout({
         label: "model bind group layout",
