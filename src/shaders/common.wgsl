@@ -12,8 +12,22 @@ struct LightSet {
 
 // TODO-2: you may want to create a ClusterSet struct similar to LightSet
 
+struct Cluster {
+    numLights: u32,
+    lights: array<u32, ${maxLightsPerCluster}>
+}
+
+struct ClusterSet {
+    clusters: array<Cluster, ${numClusterX} * ${numClusterY} * ${numClusterZ}>
+}
+
 struct CameraUniforms {
     // TODO-1.3: add an entry for the view proj mat (of type mat4x4f)
+    viewproj : mat4x4f,
+    view : mat4x4f,
+    proj : mat4x4f,
+    projInv : mat4x4f,
+    clipPlanes : vec2<f32>,
 }
 
 // CHECKITOUT: this special attenuation function ensures lights don't affect geometry outside the maximum light radius
@@ -27,4 +41,18 @@ fn calculateLightContrib(light: Light, posWorld: vec3f, nor: vec3f) -> vec3f {
 
     let lambert = max(dot(nor, normalize(vecToLight)), 0.f);
     return light.color * lambert * rangeAttenuation(distToLight);
+}
+
+fn applyTransform(point: vec4<f32>, transform: mat4x4<f32>) -> vec3<f32> {
+    let transformed = transform * point;
+    return transformed.xyz / transformed.w;
+}
+
+// gpu gems p335
+fn intersectionTest(Sphere: vec3<f32>, radius: f32, CornerOne: vec3<f32>, CornerTwo: vec3<f32>) -> bool {
+    var radius_squared = radius * radius;
+    let closestPoint = clamp(Sphere, CornerOne, CornerTwo);
+    let vecToClosestPoint = closestPoint - Sphere;
+    let distanceSquared = dot(vecToClosestPoint, vecToClosestPoint);
+    return distanceSquared <= radius_squared;
 }

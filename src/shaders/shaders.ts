@@ -29,6 +29,15 @@ export const constants = {
     bindGroup_material: 2,
 
     moveLightsWorkgroupSize: 128,
+    maxLightsPerCluster: 500,
+
+    numClusterX: 32,
+    numClusterY: 32,
+    numClusterZ: 32,
+
+    workgroupSizeX: 4,
+    workgroupSizeY: 4,
+    workgroupSizeZ: 4,
 
     lightRadius: 2
 };
