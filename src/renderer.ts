@@ -25,8 +25,7 @@ export async function initWebGPU() {
 
     aspectRatio = canvas.width / canvas.height;
 
-    if (!navigator.gpu)
-    {
+    if (!navigator.gpu) {
         let errorMessageElement = document.createElement("h1");
         errorMessageElement.textContent = "This browser doesn't support WebGPU! Try using Google Chrome.";
         errorMessageElement.style.paddingLeft = '0.4em';
@@ -36,8 +35,7 @@ export async function initWebGPU() {
     }
 
     const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter)
-    {
+    if (!adapter) {
         throw new Error("no appropriate GPUAdapter found");
     }
 

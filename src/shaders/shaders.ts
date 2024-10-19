@@ -27,10 +27,18 @@ export const constants = {
     bindGroup_scene: 0,
     bindGroup_model: 1,
     bindGroup_material: 2,
+    bindGroup_texture: 1,
 
     moveLightsWorkgroupSize: 128,
 
-    lightRadius: 2
+    lightRadius: 2,
+    numClustersX: 16,
+    numClustersY: 16,
+    numClustersZ: 24,
+    maxNumClusterLights: 1000,
+    clusteringWorkgroupSizeX: 4,
+    clusteringWorkgroupSizeY: 4,
+    clusteringWorkgroupSizeZ: 4
 };
 
 // =================================
