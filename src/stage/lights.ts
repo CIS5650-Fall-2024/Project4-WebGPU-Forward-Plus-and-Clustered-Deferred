@@ -29,6 +29,17 @@ export class Lights {
     moveLightsComputePipeline: GPUComputePipeline;
 
     // TODO-2: add layouts, pipelines, textures, etc. needed for light clustering here
+    numClustersX: number;
+    numClustersY: number;
+    numClustersZ: number;
+
+    // Buffers for light clustering
+    clusterLightsBuffer: GPUBuffer;
+
+    // Compute pipeline and bind group for clustering
+    clusteringComputeBindGroupLayout: GPUBindGroupLayout;
+    clusteringComputeBindGroup: GPUBindGroup;
+    clusteringComputePipeline: GPUComputePipeline;
 
     constructor(camera: Camera) {
         this.camera = camera;
@@ -94,6 +105,77 @@ export class Lights {
         });
 
         // TODO-2: initialize layouts, pipelines, textures, etc. needed for light clustering here
+        // Calculate the number of clusters based on screen dimensions and tile size
+        this.numClustersX = shaders.constants.numClustersX;
+        this.numClustersY = shaders.constants.numClustersY;
+        this.numClustersZ = shaders.constants.numClustersZ;
+        const totalClusters = this.numClustersX * this.numClustersY * this.numClustersZ;
+
+        // number of lights (4) + light indices (4 * maxLightsPerCluster)
+        const clusterSize = 4 + 4 * shaders.constants.maxLightsPerCluster;
+        const clusterLightsBufferSize = totalClusters * clusterSize;
+
+        this.clusterLightsBuffer = device.createBuffer({
+            label: "Cluster Lights Buffer",
+            size: clusterLightsBufferSize,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+        });
+
+        this.clusteringComputeBindGroupLayout = device.createBindGroupLayout({
+            label: "clustering compute bind group layout",
+            entries: [
+
+                { // camera
+                    binding: 0,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "uniform" }
+                },
+                { // lightSet
+                    binding: 1,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "read-only-storage" }
+                },
+                { // clusterLights
+                    binding: 2,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "storage" }
+                }
+            ]
+        });
+
+        this.clusteringComputeBindGroup = device.createBindGroup({
+            label: "clustering compute bind group",
+            layout: this.clusteringComputeBindGroupLayout,
+            entries: [
+                { // camera
+                    binding: 0,
+                    resource: { buffer: this.camera.uniformsBuffer }
+                },
+                { // lightSet
+                    binding: 1,
+                    resource: { buffer: this.lightSetStorageBuffer }
+                },
+                { // clusterLights
+                    binding: 2,
+                    resource: { buffer: this.clusterLightsBuffer }
+                }
+            ]
+        });
+
+        this.clusteringComputePipeline = device.createComputePipeline({
+            label: "clustering compute pipeline",
+            layout: device.createPipelineLayout({
+                label: "clustering compute pipeline layout",
+                bindGroupLayouts: [ this.clusteringComputeBindGroupLayout ]
+            }),
+            compute: {
+                module: device.createShaderModule({
+                    label: "clustering compute shader",
+                    code: shaders.clusteringComputeSrc
+                }),
+                entryPoint: "main"
+            }
+        });
     }
 
     private populateLightsBuffer() {
@@ -113,6 +195,18 @@ export class Lights {
     doLightClustering(encoder: GPUCommandEncoder) {
         // TODO-2: run the light clustering compute pass(es) here
         // implementing clustering here allows for reusing the code in both Forward+ and Clustered Deferred
+        const computePass = encoder.beginComputePass();
+        computePass.setPipeline(this.clusteringComputePipeline);
+        computePass.setBindGroup(0, this.clusteringComputeBindGroup);
+
+        // Calculate workgroup sizes based on the number of clusters
+        const gridSizeX = Math.ceil(this.numClustersX / shaders.constants.workgroupSizeX);
+        const gridSizeY = Math.ceil(this.numClustersY / shaders.constants.workgroupSizeY);
+        const gridSizeZ = Math.ceil(this.numClustersZ / shaders.constants.workgroupSizeZ);
+
+        computePass.dispatchWorkgroups(gridSizeX, gridSizeY, gridSizeZ);
+
+        computePass.end();
     }
 
     // CHECKITOUT: this is where the light movement compute shader is dispatched from the host

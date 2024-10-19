@@ -1,6 +1,6 @@
 // CHECKITOUT: this file loads all the shaders and preprocesses them with some common code
 
-import { Camera } from '../stage/camera';
+// import { Camera } from '../stage/camera';
 
 import commonRaw from './common.wgsl?raw';
 
@@ -30,7 +30,17 @@ export const constants = {
 
     moveLightsWorkgroupSize: 128,
 
-    lightRadius: 2
+    lightRadius: 2,
+
+    // Constants for Forward+ and Light Clustering
+    numClustersX: 16,
+    numClustersY: 9,
+    numClustersZ: 24,
+    maxLightsPerCluster: 512,
+
+    workgroupSizeX: 4,
+    workgroupSizeY: 4,
+    workgroupSizeZ: 4,
 };
 
 // =================================
