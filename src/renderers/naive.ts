@@ -18,11 +18,17 @@ export class NaiveRenderer extends renderer.Renderer {
             label: "scene uniforms bind group layout",
             entries: [
                 // TODO-1.2: add an entry for camera uniforms at binding 0, visible to only the vertex shader, and of type "uniform"
+                { // camera
+                    binding: 0,
+                    visibility: GPUShaderStage.VERTEX,
+                    buffer: { type: "uniform" }
+                },
                 { // lightSet
                     binding: 1,
                     visibility: GPUShaderStage.FRAGMENT,
                     buffer: { type: "read-only-storage" }
                 }
+                
             ]
         });
 
@@ -33,6 +39,10 @@ export class NaiveRenderer extends renderer.Renderer {
                 // TODO-1.2: add an entry for camera uniforms at binding 0
                 // you can access the camera using `this.camera`
                 // if you run into TypeScript errors, you're probably trying to upload the host buffer instead
+                { // camera
+                    binding:0,
+                    resource:{buffer:this.camera.uniformsBuffer}
+                },
                 {
                     binding: 1,
                     resource: { buffer: this.lights.lightSetStorageBuffer }
@@ -106,6 +116,7 @@ export class NaiveRenderer extends renderer.Renderer {
         renderPass.setPipeline(this.pipeline);
 
         // TODO-1.2: bind `this.sceneUniformsBindGroup` to index `shaders.constants.bindGroup_scene`
+        renderPass.setBindGroup(shaders.constants.bindGroup_scene, this.sceneUniformsBindGroup);
 
         this.scene.iterate(node => {
             renderPass.setBindGroup(shaders.constants.bindGroup_model, node.modelBindGroup);
