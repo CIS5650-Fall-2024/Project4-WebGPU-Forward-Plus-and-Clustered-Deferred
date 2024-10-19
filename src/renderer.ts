@@ -2,6 +2,7 @@ import { Scene } from './stage/scene';
 import { Lights } from './stage/lights';
 import { Camera } from './stage/camera';
 import { Stage } from './stage/stage';
+import { FrameStats } from './stage/framestats';
 
 export var canvas: HTMLCanvasElement;
 export var canvasFormat: GPUTextureFormat;
@@ -105,19 +106,20 @@ export abstract class Renderer {
     protected scene: Scene;
     protected lights: Lights;
     protected camera: Camera;
-
     protected stats: Stats;
 
-    private prevTime: number = 0;
+    private prevTime: DOMHighResTimeStamp = 0;
     private frameRequestId: number;
+    private frameStats: FrameStats;
 
     constructor(stage: Stage) {
         this.scene = stage.scene;
         this.lights = stage.lights;
         this.camera = stage.camera;
         this.stats = stage.stats;
+        this.frameStats = stage.frameStats;
 
-        this.frameRequestId = requestAnimationFrame((t) => this.onFrame(t));
+        this.frameRequestId = requestAnimationFrame((t) => this.frameOne(t));
     }
 
     stop(): void {
@@ -126,12 +128,18 @@ export abstract class Renderer {
 
     protected abstract draw(): void;
 
-    // CHECKITOUT: this is the main rendering loop
-    private onFrame(time: number) {
-        if (this.prevTime == 0) {
-            this.prevTime = time;
-        }
+    private frameOne(time: DOMHighResTimeStamp) {
+        this.prevTime = time;
+        this.lights.onFrame(time);
+        this.stats.begin();
+        this.draw();
+        this.stats.end();
+        this.frameStats.reset(performance.now());
+        this.frameRequestId = requestAnimationFrame((t) => this.onFrame(t))
+    }
 
+    // CHECKITOUT: this is the main rendering loop
+    private onFrame(time: DOMHighResTimeStamp) {
         let deltaTime = time - this.prevTime;
         this.camera.onFrame(deltaTime);
         this.lights.onFrame(time);
@@ -141,6 +149,7 @@ export abstract class Renderer {
         this.draw();
 
         this.stats.end();
+        this.frameStats.update(time);
 
         this.prevTime = time;
         this.frameRequestId = requestAnimationFrame((t) => this.onFrame(t));

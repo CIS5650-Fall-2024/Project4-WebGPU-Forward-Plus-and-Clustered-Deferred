@@ -13,7 +13,7 @@
     "@types/stats.js": "^0.17.3",
     "@webgpu/types": "^0.1.44",
     "typescript": "^5.2.2",
-    "vite": "^5.3.4"
+    "vite": "^5.4.9"
   },
   "dependencies": {
     "@loaders.gl/gltf": "^4.2.2",
