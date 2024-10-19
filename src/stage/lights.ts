@@ -1,7 +1,7 @@
 import { vec3 } from "wgpu-matrix";
 import { device } from "../renderer";
 
-import * as shaders from '../shaders/shaders';
+import * as shaders from "../shaders/shaders";
 import { Camera } from "./camera";
 
 // h in [0, 1]
@@ -36,7 +36,7 @@ export class Lights {
         this.lightSetStorageBuffer = device.createBuffer({
             label: "lights",
             size: 16 + this.lightsArray.byteLength, // 16 for numLights + padding
-            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         });
         this.populateLightsBuffer();
         this.updateLightSetUniformNumLights();
@@ -44,23 +44,25 @@ export class Lights {
         this.timeUniformBuffer = device.createBuffer({
             label: "time uniform",
             size: 4,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
         this.moveLightsComputeBindGroupLayout = device.createBindGroupLayout({
             label: "move lights compute bind group layout",
             entries: [
-                { // lightSet
+                {
+                    // lightSet
                     binding: 0,
                     visibility: GPUShaderStage.COMPUTE,
-                    buffer: { type: "storage" }
+                    buffer: { type: "storage" },
                 },
-                { // time
+                {
+                    // time
                     binding: 1,
                     visibility: GPUShaderStage.COMPUTE,
-                    buffer: { type: "uniform" }
-                }
-            ]
+                    buffer: { type: "uniform" },
+                },
+            ],
         });
 
         this.moveLightsComputeBindGroup = device.createBindGroup({
@@ -69,28 +71,28 @@ export class Lights {
             entries: [
                 {
                     binding: 0,
-                    resource: { buffer: this.lightSetStorageBuffer }
+                    resource: { buffer: this.lightSetStorageBuffer },
                 },
                 {
                     binding: 1,
-                    resource: { buffer: this.timeUniformBuffer }
-                }
-            ]
+                    resource: { buffer: this.timeUniformBuffer },
+                },
+            ],
         });
 
         this.moveLightsComputePipeline = device.createComputePipeline({
             label: "move lights compute pipeline",
             layout: device.createPipelineLayout({
                 label: "move lights compute pipeline layout",
-                bindGroupLayouts: [ this.moveLightsComputeBindGroupLayout ]
+                bindGroupLayouts: [this.moveLightsComputeBindGroupLayout],
             }),
             compute: {
                 module: device.createShaderModule({
                     label: "move lights compute shader",
-                    code: shaders.moveLightsComputeSrc
+                    code: shaders.moveLightsComputeSrc,
                 }),
-                entryPoint: "main"
-            }
+                entryPoint: "main",
+            },
         });
 
         // TODO-2: initialize layouts, pipelines, textures, etc. needed for light clustering here
@@ -100,7 +102,7 @@ export class Lights {
         for (let lightIdx = 0; lightIdx < Lights.maxNumLights; ++lightIdx) {
             // light pos is set by compute shader so no need to set it here
             const lightColor = vec3.scale(hueToRgb(Math.random()), Lights.lightIntensity);
-            this.lightsArray.set(lightColor, (lightIdx * Lights.numFloatsPerLight) + 4);
+            this.lightsArray.set(lightColor, lightIdx * Lights.numFloatsPerLight + 4);
         }
 
         device.queue.writeBuffer(this.lightSetStorageBuffer, 16, this.lightsArray);

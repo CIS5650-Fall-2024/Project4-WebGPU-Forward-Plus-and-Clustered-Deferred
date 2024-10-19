@@ -1,7 +1,7 @@
-import { Scene } from './stage/scene';
-import { Lights } from './stage/lights';
-import { Camera } from './stage/camera';
-import { Stage } from './stage/stage';
+import { Scene } from "./stage/scene";
+import { Lights } from "./stage/lights";
+import { Camera } from "./stage/camera";
+import { Stage } from "./stage/stage";
 
 export var canvas: HTMLCanvasElement;
 export var canvasFormat: GPUTextureFormat;
@@ -25,29 +25,34 @@ export async function initWebGPU() {
 
     aspectRatio = canvas.width / canvas.height;
 
-    if (!navigator.gpu)
-    {
+    if (!navigator.gpu) {
         let errorMessageElement = document.createElement("h1");
         errorMessageElement.textContent = "This browser doesn't support WebGPU! Try using Google Chrome.";
-        errorMessageElement.style.paddingLeft = '0.4em';
-        document.body.innerHTML = '';
+        errorMessageElement.style.paddingLeft = "0.4em";
+        document.body.innerHTML = "";
         document.body.appendChild(errorMessageElement);
         throw new Error("WebGPU not supported on this browser");
     }
 
     const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter)
-    {
+    if (!adapter) {
         throw new Error("no appropriate GPUAdapter found");
     }
 
-    device = await adapter.requestDevice();
+    // device = await adapter.requestDevice();
 
     context = canvas.getContext("webgpu")!;
-    canvasFormat = navigator.gpu.getPreferredCanvasFormat();
+    // canvasFormat = navigator.gpu.getPreferredCanvasFormat();
+
+    canvasFormat = adapter.features.has("bgra8unorm-storage") ? navigator.gpu.getPreferredCanvasFormat() : "rgba8unorm";
+    device = await adapter?.requestDevice({
+        requiredFeatures: canvasFormat === "bgra8unorm" ? ["bgra8unorm-storage"] : [],
+    });
+
     context.configure({
         device: device,
         format: canvasFormat,
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.STORAGE_BINDING,
     });
 
     console.log("WebGPU init successsful");
@@ -55,50 +60,56 @@ export async function initWebGPU() {
     modelBindGroupLayout = device.createBindGroupLayout({
         label: "model bind group layout",
         entries: [
-            { // modelMat
+            {
+                // modelMat
                 binding: 0,
                 visibility: GPUShaderStage.VERTEX,
-                buffer: { type: "uniform" }
-            }
-        ]
+                buffer: { type: "uniform" },
+            },
+        ],
     });
 
     materialBindGroupLayout = device.createBindGroupLayout({
         label: "material bind group layout",
         entries: [
-            { // diffuseTex
+            {
+                // diffuseTex
                 binding: 0,
                 visibility: GPUShaderStage.FRAGMENT,
-                texture: {}
+                texture: {},
             },
-            { // diffuseTexSampler
+            {
+                // diffuseTexSampler
                 binding: 1,
                 visibility: GPUShaderStage.FRAGMENT,
-                sampler: {}
-            }
-        ]
+                sampler: {},
+            },
+        ],
     });
 }
 
 export const vertexBufferLayout: GPUVertexBufferLayout = {
     arrayStride: 32,
     attributes: [
-        { // pos
+        {
+            // pos
             format: "float32x3",
             offset: 0,
-            shaderLocation: 0
+            shaderLocation: 0,
         },
-        { // nor
+        {
+            // nor
             format: "float32x3",
             offset: 12,
-            shaderLocation: 1
+            shaderLocation: 1,
         },
-        { // uv
+        {
+            // uv
             format: "float32x2",
             offset: 24,
-            shaderLocation: 2
-        }
-    ]
+            shaderLocation: 2,
+        },
+    ],
 };
 
 export abstract class Renderer {
@@ -137,7 +148,6 @@ export abstract class Renderer {
         this.lights.onFrame(time);
 
         this.stats.begin();
-
         this.draw();
 
         this.stats.end();
