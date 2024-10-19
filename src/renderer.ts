@@ -15,6 +15,8 @@ export const fovYDegrees = 45;
 export var modelBindGroupLayout: GPUBindGroupLayout;
 export var materialBindGroupLayout: GPUBindGroupLayout;
 
+export var canTimestamp: boolean;
+
 // CHECKITOUT: this function initializes WebGPU and also creates some bind group layouts shared by all the renderers
 export async function initWebGPU() {
     canvas = document.getElementById("mainCanvas") as HTMLCanvasElement;
@@ -22,6 +24,9 @@ export async function initWebGPU() {
     const devicePixelRatio = window.devicePixelRatio;
     canvas.width = canvas.clientWidth * devicePixelRatio;
     canvas.height = canvas.clientHeight * devicePixelRatio;
+
+    console.log(canvas.clientWidth);
+    console.log(canvas.clientHeight);
 
     aspectRatio = canvas.width / canvas.height;
 
@@ -41,13 +46,20 @@ export async function initWebGPU() {
         throw new Error("no appropriate GPUAdapter found");
     }
 
-    device = await adapter.requestDevice();
+    canTimestamp = adapter.features.has('timestamp-query');
+    const hasBGRA8unormStorage = adapter.features.has('bgra8unorm-storage');
+    device = await adapter.requestDevice({
+        requiredFeatures: (canTimestamp ? 
+                            (hasBGRA8unormStorage ? ['timestamp-query', 'bgra8unorm-storage'] : ['timestamp-query']) : 
+                            (hasBGRA8unormStorage ? ['bgra8unorm-storage'] : [])),
+    });
 
     context = canvas.getContext("webgpu")!;
-    canvasFormat = navigator.gpu.getPreferredCanvasFormat();
+    canvasFormat = hasBGRA8unormStorage ? navigator.gpu.getPreferredCanvasFormat() : 'bgra8unorm';
     context.configure({
         device: device,
         format: canvasFormat,
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING,
     });
 
     console.log("WebGPU init successsful");
@@ -111,6 +123,22 @@ export abstract class Renderer {
     private prevTime: number = 0;
     private frameRequestId: number;
 
+    protected querySet: GPUQuerySet;
+    protected resolveBuffer: GPUBuffer;
+    protected resultBuffer: GPUBuffer;
+
+    protected gpuTime: number = 0;
+    protected gpuTimes: Array<number>;
+    protected gpuTimesPre: Array<number>;
+    protected gpuTimesPost: Array<number>;
+    protected gpuTimesCompute: Array<number>;
+    protected gpuTimesIndex: number = 0;
+    protected gpuTimesSize: number = 100;
+
+    // IMPORTANT: Edit these flags to log times on browser console
+    private logTime = false;
+    protected logSeparateTimes = false;
+
     constructor(stage: Stage) {
         this.scene = stage.scene;
         this.lights = stage.lights;
@@ -118,6 +146,26 @@ export abstract class Renderer {
         this.stats = stage.stats;
 
         this.frameRequestId = requestAnimationFrame((t) => this.onFrame(t));
+
+        this.querySet = device.createQuerySet({
+            type: 'timestamp',
+            count: 6,
+        });
+        this.resolveBuffer = device.createBuffer({
+            size: this.querySet.count * 12,
+            usage: GPUBufferUsage.QUERY_RESOLVE | GPUBufferUsage.COPY_SRC,
+        });
+        this.resultBuffer = device.createBuffer({
+            size: this.resolveBuffer.size,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,  
+        });
+
+        this.gpuTimes = new Array<number>(this.gpuTimesSize);
+        this.gpuTimesPre = new Array<number>(this.gpuTimesSize);
+        this.gpuTimesPost = new Array<number>(this.gpuTimesSize);
+        this.gpuTimesCompute = new Array<number>(this.gpuTimesSize);
+
+        canTimestamp = canTimestamp && this.logTime;
     }
 
     stop(): void {

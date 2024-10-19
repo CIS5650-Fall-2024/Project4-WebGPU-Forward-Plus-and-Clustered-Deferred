@@ -18,6 +18,11 @@ export class NaiveRenderer extends renderer.Renderer {
             label: "scene uniforms bind group layout",
             entries: [
                 // TODO-1.2: add an entry for camera uniforms at binding 0, visible to only the vertex shader, and of type "uniform"
+                { // cameraSet
+                    binding: 0,
+                    visibility: GPUShaderStage.VERTEX,
+                    buffer: { type: "uniform" }
+                },
                 { // lightSet
                     binding: 1,
                     visibility: GPUShaderStage.FRAGMENT,
@@ -33,6 +38,10 @@ export class NaiveRenderer extends renderer.Renderer {
                 // TODO-1.2: add an entry for camera uniforms at binding 0
                 // you can access the camera using `this.camera`
                 // if you run into TypeScript errors, you're probably trying to upload the host buffer instead
+                {
+                    binding: 0,
+                    resource: { buffer: this.camera.uniformsBuffer }
+                },
                 {
                     binding: 1,
                     resource: { buffer: this.lights.lightSetStorageBuffer }
@@ -101,11 +110,19 @@ export class NaiveRenderer extends renderer.Renderer {
                 depthClearValue: 1.0,
                 depthLoadOp: "clear",
                 depthStoreOp: "store"
-            }
+            },
+            ...(renderer.canTimestamp && {
+                timestampWrites: {
+                    querySet: this.querySet,
+                    beginningOfPassWriteIndex: 0,
+                    endOfPassWriteIndex: 1,
+                },
+            }),
         });
         renderPass.setPipeline(this.pipeline);
 
         // TODO-1.2: bind `this.sceneUniformsBindGroup` to index `shaders.constants.bindGroup_scene`
+        renderPass.setBindGroup(shaders.constants.bindGroup_scene, this.sceneUniformsBindGroup);
 
         this.scene.iterate(node => {
             renderPass.setBindGroup(shaders.constants.bindGroup_model, node.modelBindGroup);
@@ -119,6 +136,33 @@ export class NaiveRenderer extends renderer.Renderer {
 
         renderPass.end();
 
+        if (renderer.canTimestamp) {
+            encoder.resolveQuerySet(this.querySet, 0, this.querySet.count, this.resolveBuffer, 0);
+            if (this.resultBuffer.mapState === 'unmapped') {
+                encoder.copyBufferToBuffer(this.resolveBuffer, 0, this.resultBuffer, 0, this.resultBuffer.size);
+            }
+        }
+
         renderer.device.queue.submit([encoder.finish()]);
+
+        if (renderer.canTimestamp && this.resultBuffer.mapState === 'unmapped') {
+            this.resultBuffer.mapAsync(GPUMapMode.READ).then(() => {
+                const times = new BigInt64Array(this.resultBuffer.getMappedRange());
+                this.gpuTime = (Number(times[1] - times[0])) * 0.000001;
+                if (this.gpuTimesIndex < this.gpuTimesSize && 
+                    this.gpuTimes[this.gpuTimesIndex] != this.gpuTime &&
+                    this.gpuTime > 0) {
+                    this.gpuTimes[this.gpuTimesIndex] = this.gpuTime;
+                    this.gpuTimesIndex++;
+                } 
+                this.resultBuffer.unmap();
+            });
+        }
+
+        if (this.gpuTimesIndex == this.gpuTimesSize) {
+            console.log("Overall time");
+            console.log(this.gpuTimes);
+            this.gpuTimesIndex++;
+        }
     }
 }

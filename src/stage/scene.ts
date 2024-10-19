@@ -43,22 +43,53 @@ export class Material {
     constructor(gltfMaterial: GLTFMaterial, textures: Texture[]) {
         this.id = Material.nextId++;
 
-        const diffuseTexture = textures[gltfMaterial.pbrMetallicRoughness!.baseColorTexture!.index];
+        if (gltfMaterial.pbrMetallicRoughness!.baseColorTexture == undefined) {
+            let texture = device.createTexture({
+                size: [1, 1],
+                format: 'rgba8unorm',
+                usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT
+            });
 
-        this.materialBindGroup = device.createBindGroup({
-            label: "material bind group",
-            layout: materialBindGroupLayout,
-            entries: [
-                {
-                    binding: 0,
-                    resource: diffuseTexture.image.createView()
-                },
-                {
-                    binding: 1,
-                    resource: diffuseTexture.sampler
-                }
-            ]
-        });
+            let textureData = new Uint8Array(gltfMaterial.pbrMetallicRoughness!.baseColorFactor!);
+            device.queue.writeTexture(
+                { texture },
+                textureData,
+                { bytesPerRow: 4 },
+                { width: 1, height: 1 },
+            );
+
+            this.materialBindGroup = device.createBindGroup({
+                label: "material bind group",
+                layout: materialBindGroupLayout,
+                entries: [
+                    {
+                        binding: 0,
+                        resource: texture.createView()
+                    },
+                    {
+                        binding: 1,
+                        resource: device.createSampler()
+                    }
+                ]
+            });
+        } else {
+            const diffuseTexture = textures[gltfMaterial.pbrMetallicRoughness!.baseColorTexture!.index];
+    
+            this.materialBindGroup = device.createBindGroup({
+                label: "material bind group",
+                layout: materialBindGroupLayout,
+                entries: [
+                    {
+                        binding: 0,
+                        resource: diffuseTexture.image.createView()
+                    },
+                    {
+                        binding: 1,
+                        resource: diffuseTexture.sampler
+                    }
+                ]
+            });
+        }
     }
 }
 
@@ -178,7 +209,7 @@ export class Node {
         if (this.mesh != undefined) {
             this.modelMatUniformBuffer = device.createBuffer({
                 label: "model mat uniform",
-                size: 16 * 4,
+                size: 16 * 4 + 8,
                 usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
             });
 
@@ -297,18 +328,24 @@ export class Scene {
             }
 
             let sceneSamplers: GPUSampler[] = [];
-            for (let gltfSampler of gltf.samplers!) {
-                sceneSamplers.push(createSampler(gltfSampler));
+            if (gltf.samplers != undefined) {
+                for (let gltfSampler of gltf.samplers!) {
+                    sceneSamplers.push(createSampler(gltfSampler));
+                }
             }
 
-            for (let gltfTexture of gltf.textures!) {
-                sceneTextures.push(new Texture(sceneImages[gltfTexture.source!], sceneSamplers[gltfTexture.sampler!]));
+            if (gltf.textures != undefined) {
+                for (let gltfTexture of gltf.textures!) {
+                    sceneTextures.push(new Texture(sceneImages[gltfTexture.source!], sceneSamplers[gltfTexture.sampler!]));
+                }
             }
         }
 
         let sceneMaterials: Material[] = [];
-        for (let gltfMaterial of gltf.materials!) {
-            sceneMaterials.push(new Material(gltfMaterial, sceneTextures));
+        if (gltf.materials != undefined) {
+            for (let gltfMaterial of gltf.materials!) {
+                sceneMaterials.push(new Material(gltfMaterial, sceneTextures));
+            }
         }
 
         let sceneMeshes: Mesh[] = [];
