@@ -1,5 +1,4 @@
 @group(${bindGroup_scene}) @binding(1) var<storage, read> lightSet: LightSet;
-
 @group(${bindGroup_material}) @binding(0) var diffuseTex: texture_2d<f32>;
 @group(${bindGroup_material}) @binding(1) var diffuseTexSampler: sampler;
 

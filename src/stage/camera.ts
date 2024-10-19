@@ -1,16 +1,47 @@
-import { Mat4, mat4, Vec3, vec3 } from "wgpu-matrix";
+import { Mat4, mat4, Vec2, vec2, Vec3, vec3 } from "wgpu-matrix";
 import { toRadians } from "../math_util";
 import { device, canvas, fovYDegrees, aspectRatio } from "../renderer";
-
+/** 
+ * VERY IMPORTANT: Calculate the offset using this website: 
+ * https://webgpufundamentals.org/webgpu/lessons/resources/wgsl-offset-computer.html# 
+ **/
 class CameraUniforms {
-    readonly buffer = new ArrayBuffer(16 * 4);
-    private readonly floatView = new Float32Array(this.buffer);
+    // readonly buffer = new ArrayBuffer(16 * 4); // This buffer is only enough for storing the viewProjMat
+    readonly buffer = new ArrayBuffer(272);
+    // private readonly floatView = new Float32Array(this.buffer);
+    // Create typed views for each section of the buffer
+    private readonly viewProj = new Float32Array(this.buffer, 0, 16); 
+    private readonly view = new Float32Array(this.buffer, 64, 16);
+    private readonly proj = new Float32Array(this.buffer, 128, 16);
+    private readonly invProj = new Float32Array(this.buffer, 192, 16); 
+    private readonly screenSize = new Float32Array(this.buffer, 256, 2); 
+    private readonly nearAndFar = new Float32Array(this.buffer, 264, 2); 
 
     set viewProjMat(mat: Float32Array) {
         // TODO-1.1: set the first 16 elements of `this.floatView` to the input `mat`
+        this.viewProj.set(mat);
     }
 
     // TODO-2: add extra functions to set values needed for light clustering here
+    set viewMat(mat: Float32Array) {
+        this.view.set(mat);
+    }
+
+    set projMat(mat: Float32Array) { 
+        this.proj.set(mat);
+     }
+
+     set invProjMat(mat: Float32Array) {
+        this.invProj.set(mat);
+    }
+
+    set screenSizeVec(size: Vec2) {
+        this.screenSize.set(size);
+    }
+
+    set nearAndFarPlane(nearAndFar: Vec2) {
+        this.nearAndFar.set(nearAndFar);
+    }
 }
 
 export class Camera {
@@ -38,6 +69,13 @@ export class Camera {
         // check `lights.ts` for examples of using `device.createBuffer()`
         //
         // note that you can add more variables (e.g. inverse proj matrix) to this buffer in later parts of the assignment
+        
+        // Explain: The GPUBuffer interface of the WebGPU API represents a block of memory that can be used to store raw data to use in GPU operations.
+        // https://developer.mozilla.org/en-US/docs/Web/API/GPUBuffer
+        this.uniformsBuffer = device.createBuffer({
+            size: this.uniforms.buffer.byteLength,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
 
         this.projMat = mat4.perspective(toRadians(fovYDegrees), aspectRatio, Camera.nearPlane, Camera.farPlane);
 
@@ -128,11 +166,21 @@ export class Camera {
         const lookPos = vec3.add(this.cameraPos, vec3.scale(this.cameraFront, 1));
         const viewMat = mat4.lookAt(this.cameraPos, lookPos, [0, 1, 0]);
         const viewProjMat = mat4.mul(this.projMat, viewMat);
-        // TODO-1.1: set `this.uniforms.viewProjMat` to the newly calculated view proj mat
+        const invProjMat = mat4.inverse(this.projMat);
+        const screenSize = vec2.create(canvas.width, canvas.height);
+        const nearAndFar = vec2.create(Camera.nearPlane, Camera.farPlane);
 
+        // TODO-1.1: set `this.uniforms.viewProjMat` to the newly calculated view proj mat
+        this.uniforms.viewProjMat = viewProjMat;
         // TODO-2: write to extra buffers needed for light clustering here
+        this.uniforms.viewMat = viewMat;
+        this.uniforms.projMat = this.projMat;
+        this.uniforms.invProjMat = invProjMat;
+        this.uniforms.screenSizeVec = screenSize;
+        this.uniforms.nearAndFarPlane = nearAndFar;
 
         // TODO-1.1: upload `this.uniforms.buffer` (host side) to `this.uniformsBuffer` (device side)
         // check `lights.ts` for examples of using `device.queue.writeBuffer()`
+        device.queue.writeBuffer(this.uniformsBuffer, 0, this.uniforms.buffer);
     }
 }
