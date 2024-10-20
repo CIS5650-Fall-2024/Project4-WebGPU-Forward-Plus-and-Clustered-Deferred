@@ -29,6 +29,10 @@ export class Lights {
     moveLightsComputePipeline: GPUComputePipeline;
 
     // TODO-2: add layouts, pipelines, textures, etc. needed for light clustering here
+    clusterBindGroupLayout: GPUBindGroupLayout;
+    clusterBindGroup: GPUBindGroup;
+    clusterPipeline: GPUComputePipeline;
+    clusterBuffer: GPUBuffer;
 
     constructor(camera: Camera) {
         this.camera = camera;
@@ -94,6 +98,68 @@ export class Lights {
         });
 
         // TODO-2: initialize layouts, pipelines, textures, etc. needed for light clustering here
+        const clusterSetSize = 
+            shaders.constants.clustersAlongX *
+            shaders.constants.clustersAlongY *
+            shaders.constants.clustersAlongZ *
+            shaders.constants.sizeOfCluster;
+
+        this.clusterBuffer = device.createBuffer({
+            label: "cluster buffer",
+            size: 12 + clusterSetSize,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+        });
+
+        this.clusterBindGroupLayout = device.createBindGroupLayout({
+            label: "Cluster bind group layout",
+            entries: [
+                { // camera uniforms
+                    binding: 0,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "uniform" } 
+                },
+                { // lightSet
+                    binding: 1,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "read-only-storage" } 
+                },
+                { // cluster
+                    binding: 2,
+                    visibility: GPUShaderStage.COMPUTE | GPUShaderStage.FRAGMENT,
+                    buffer: { type: "storage" }
+                }
+            ]
+        });
+        this.clusterBindGroup = device.createBindGroup({
+            label: "Cluster bind group",
+            layout: this.clusterBindGroupLayout,
+            entries: [
+                {
+                    binding: 0,
+                    resource: { buffer: this.camera.uniformsBuffer }
+                },
+                {
+                    binding: 1,
+                    resource: { buffer: this.lightSetStorageBuffer }
+                },
+                {
+                    binding: 2,
+                    resource: { buffer: this.clusterBuffer }
+                }
+            ]
+        });
+
+        this.clusterPipeline = device.createComputePipeline({
+            layout: device.createPipelineLayout({
+                label: "Compute Pipeline",
+                bindGroupLayouts: [this.clusterBindGroupLayout]
+            }),
+            compute: {
+                module: device.createShaderModule({
+                    code: shaders.clusteringComputeSrc
+                }),
+            }
+        });
     }
 
     private populateLightsBuffer() {
