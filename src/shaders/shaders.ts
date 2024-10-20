@@ -1,7 +1,7 @@
 // CHECKITOUT: this file loads all the shaders and preprocesses them with some common code
 
 import { Camera } from '../stage/camera';
-
+import * as renderer from '../renderer';
 import commonRaw from './common.wgsl?raw';
 
 import naiveVertRaw from './naive.vs.wgsl?raw';
@@ -29,8 +29,12 @@ export const constants = {
     bindGroup_material: 2,
 
     moveLightsWorkgroupSize: 128,
-
-    lightRadius: 2
+    clusterWorkgroupSize: [4, 2, 4],
+    tilesize:[32, 18, 48],
+    lightRadius: 20,
+    maxLightsInCluster: 256,
+    nearPlane: 0.1,
+    farPlane: 1000
 };
 
 // =================================
