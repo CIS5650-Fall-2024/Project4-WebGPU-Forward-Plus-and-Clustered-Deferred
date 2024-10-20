@@ -29,6 +29,11 @@ export class Lights {
     moveLightsComputePipeline: GPUComputePipeline;
 
     // TODO-2: add layouts, pipelines, textures, etc. needed for light clustering here
+    clusterLightsBuffer: GPUBuffer;
+    lightClusteringBindGroupLayout: GPUBindGroupLayout;
+    lightClusteringBindGroup: GPUBindGroup;
+    lightClusteringPipeline: GPUComputePipeline;
+
 
     constructor(camera: Camera) {
         this.camera = camera;
@@ -94,6 +99,73 @@ export class Lights {
         });
 
         // TODO-2: initialize layouts, pipelines, textures, etc. needed for light clustering here
+
+        const numClusters = shaders.constants.clusterSize * shaders.constants.clusterSize * shaders.constants.clusterSize;
+        const bytesPerCluster = shaders.constants.maxLights * 4;
+        const clusterGridBufferSize = numClusters * bytesPerCluster;
+
+        // store all lights in clusters
+        this.clusterLightsBuffer = device.createBuffer({
+            label: "light clustering: buffer",
+            size: clusterGridBufferSize,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+        });
+
+        this.lightClusteringBindGroupLayout = device.createBindGroupLayout({
+            label: "light clustering: bind group layout",
+            entries: [
+                { // camera 
+                    binding: 0,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "uniform" }
+                },
+                { // lights
+                    binding: 1,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: {type: "read-only-storage"}
+                },
+                { // clusters
+                    binding: 2,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer : { type : "storage" }
+                }
+            ]
+        });
+
+        this.lightClusteringBindGroup = device.createBindGroup({
+            label: "light clustering: compute bind group",
+            layout: this.lightClusteringBindGroupLayout,
+            entries: [
+                {
+                    binding: 0,
+                    resource: { buffer: this.camera.uniformsBuffer }
+                },
+                {
+                    binding: 1,
+                    resource: { buffer: this.lightSetStorageBuffer }
+                },
+                {
+                    binding: 2,
+                    resource: { buffer: this.clusterLightsBuffer }
+                }
+            ]
+        });
+
+        this.lightClusteringPipeline = device.createComputePipeline({
+            label : "light clustering: compute pipeline",
+            layout : device.createPipelineLayout({
+                label: "light clustering: compute pipeline layout",
+                bindGroupLayouts: [ this.lightClusteringBindGroupLayout ]
+            }),
+            compute: {
+                module: device.createShaderModule({
+                    label: "light clustering: compute shader",
+                    code: shaders.clusteringComputeSrc
+                }),
+
+                entryPoint: "main"
+            }
+        }) 
     }
 
     private populateLightsBuffer() {
@@ -113,6 +185,16 @@ export class Lights {
     doLightClustering(encoder: GPUCommandEncoder) {
         // TODO-2: run the light clustering compute pass(es) here
         // implementing clustering here allows for reusing the code in both Forward+ and Clustered Deferred
+        const computePass = encoder.beginComputePass();
+
+        computePass.setPipeline(this.lightClusteringPipeline);
+        computePass.setBindGroup(0, this.lightClusteringBindGroup);
+
+        computePass.dispatchWorkgroups(
+            shaders.constants.clusterSize,
+            shaders.constants.clusterSize,
+            shaders.constants.clusterSize);
+        computePass.end();
     }
 
     // CHECKITOUT: this is where the light movement compute shader is dispatched from the host
@@ -131,7 +213,6 @@ export class Lights {
         computePass.dispatchWorkgroups(workgroupCount);
 
         computePass.end();
-
         device.queue.submit([encoder.finish()]);
     }
 }
