@@ -11,6 +11,8 @@ import { Lights } from './stage/lights';
 import { Camera } from './stage/camera';
 import { Stage } from './stage/stage';
 
+// import * as shaders from './shaders/shaders';
+
 await initWebGPU();
 setupLoaders();
 
@@ -27,6 +29,9 @@ document.body.appendChild(stats.dom);
 const gui = new GUI();
 gui.add(lights, 'numLights').min(1).max(Lights.maxNumLights).step(1).onChange(() => {
     lights.updateLightSetUniformNumLights();
+
+    // Divide numLights by 10, round up to the next multiple of 4
+    // shaders.constants.maxLightsPerCluster = Math.ceil(lights.numLights / 10) + 3 & ~3;
 });
 
 const stage = new Stage(scene, lights, camera, stats);
@@ -49,8 +54,8 @@ function setRenderer(mode: string) {
     }
 }
 
-const renderModes = { naive: 'naive', forwardPlus: 'forward+', clusteredDeferred: 'clustered deferred' };
-let renderModeController = gui.add({ mode: renderModes.naive }, 'mode', renderModes);
+const renderModes = { naive: 'Forward', forwardPlus: 'Clustered Forward', clusteredDeferred: 'Clustered Deferred' };
+let renderModeController = gui.add({ mode: renderModes.clusteredDeferred }, 'mode', Object.values(renderModes));
 renderModeController.onChange(setRenderer);
 
 setRenderer(renderModeController.getValue());
