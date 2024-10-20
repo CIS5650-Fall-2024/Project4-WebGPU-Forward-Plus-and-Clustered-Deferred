@@ -14,3 +14,51 @@
 //     Add the calculated contribution to the total light accumulation.
 // Multiply the fragment’s diffuse color by the accumulated light contribution.
 // Return the final color, ensuring that the alpha component is set appropriately (typically to 1).
+
+@group(${bindGroup_scene}) @binding(0) var<uniform> cameraUniforms: CameraUniforms;
+@group(${bindGroup_scene}) @binding(1) var<storage, read> lightSet: LightSet;
+@group(${bindGroup_scene}) @binding(2) var<storage, read> clusterSet: ClusterSet;
+@group(${bindGroup_scene}) @binding(3) var<uniform> screenDim: vec2f;
+
+@group(${bindGroup_material}) @binding(0) var diffuseTex: texture_2d<f32>;
+@group(${bindGroup_material}) @binding(1) var diffuseTexSampler: sampler;
+
+struct FragmentInput
+{
+    @builtin(position) fragPos: vec4f,
+    @location(0) pos: vec3f,
+    @location(1) nor: vec3f,
+    @location(2) uv: vec2f
+}
+
+@fragment
+fn main(in: FragmentInput) -> @location(0) vec4f
+{
+    let diffuseColor = textureSample(diffuseTex, diffuseTexSampler, in.uv);
+    if (diffuseColor.a < 0.5f) {
+        discard;
+    }
+
+    var screenSpace: vec4f = cameraUniforms.viewProj * vec4(in.pos, 1.0);
+    screenSpace = screenSpace / screenSpace.w * 0.5 + 0.5;
+
+    var clusterNumZ: f32 = f32(${clusterNumZ});
+    var clusterNumXY: vec2f = vec2f(f32(${clusterNumX}), f32(${clusterNumY}));
+    var zNear: f32 = f32(${zNear});
+    var zFar: f32 = f32(${zFar});
+
+    var camSpace: vec4f = cameraUniforms.viewMat * vec4(in.pos, 1.0);
+    var zTile: u32 = u32(clusterNumZ * log2(abs(camSpace.z) / zNear) / log2(zFar / zNear));
+    var xyTileSize: vec2f = screenDim / clusterNumXY;
+    var xyTile: vec2u = vec2u(in.fragPos.xy / xyTileSize);
+    var tileIndex: u32 = xyTile.x + (xyTile.y * ${clusterNumX}) + (zTile * ${clusterNumX} * ${clusterNumY});
+
+    var totalLightContrib = vec3f(0, 0, 0);
+    for (var lightIdx = 0u; lightIdx < clusterSet.clusters[tileIndex].count; lightIdx++) {
+        let light = lightSet.lights[lightIdx];
+        totalLightContrib += calculateLightContrib(light, in.pos, in.nor);
+    }
+
+    var finalColor = diffuseColor.rgb * totalLightContrib;
+    return vec4(finalColor, 1);
+}
