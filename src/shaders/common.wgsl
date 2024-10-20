@@ -1,4 +1,6 @@
 // CHECKITOUT: code that you add here will be prepended to all shaders
+const zNear : f32 = 0.1; 
+const zFar : f32 = 20.0;
 
 struct Light {
     pos: vec3f,
@@ -11,9 +13,25 @@ struct LightSet {
 }
 
 // TODO-2: you may want to create a ClusterSet struct similar to LightSet
+struct Cluster {
+    minBounds: vec4<f32>,
+    maxBounds: vec4<f32>,
+    numLights: u32,
+    indices: array<u32, ${maxLightsPerCluster}>
+}
+
+struct ClusterSet {
+    numClusters: u32,
+    clusters: array<Cluster>
+}
 
 struct CameraUniforms {
     // TODO-1.3: add an entry for the view proj mat (of type mat4x4f)
+    viewProjMat: mat4x4<f32>,
+    viewMat: mat4x4<f32>, 
+    invProjMat: mat4x4<f32>, 
+    invViewMat: mat4x4<f32>, 
+    screenDim: vec2<f32>
 }
 
 // CHECKITOUT: this special attenuation function ensures lights don't affect geometry outside the maximum light radius
