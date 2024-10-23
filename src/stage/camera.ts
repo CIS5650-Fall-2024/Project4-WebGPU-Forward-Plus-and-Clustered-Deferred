@@ -3,14 +3,40 @@ import { toRadians } from "../math_util";
 import { device, canvas, fovYDegrees, aspectRatio } from "../renderer";
 
 class CameraUniforms {
-    readonly buffer = new ArrayBuffer(16 * 4);
+    readonly buffer = new ArrayBuffer(88 * 4); // 88 floats in total (16 for viewProjMat + 16 for invViewProjMat + 16 for viewMat + 16 for projMat + 16 for invProjMat + 3 for cameraPos + 1 padding + 2 for zNear/zFar)
     private readonly floatView = new Float32Array(this.buffer);
 
     set viewProjMat(mat: Float32Array) {
-        // TODO-1.1: set the first 16 elements of `this.floatView` to the input `mat`
+        this.floatView.set(mat.subarray(0, 16), 0); 
     }
 
-    // TODO-2: add extra functions to set values needed for light clustering here
+    set invViewProjMat(invMat: Float32Array) {
+        this.floatView.set(invMat.subarray(0, 16), 16);
+    }
+
+    set viewMat(viewMat: Float32Array) {
+        this.floatView.set(viewMat.subarray(0, 16), 32);
+    }
+
+    set projMat(projMat: Float32Array) {
+        this.floatView.set(projMat.subarray(0, 16), 48);
+    }
+
+    set invProjMat(invProjMat: Float32Array) {
+        this.floatView.set(invProjMat.subarray(0, 16), 64);
+    }
+
+    set cameraPos(pos: Float32Array) {
+        this.floatView.set(pos.subarray(0, 3), 80);
+    }
+
+    set zNear(zNear: number) {
+        this.floatView[84] = zNear;
+    }
+
+    set zFar(zFar: number) {
+        this.floatView[85] = zFar;
+    }
 }
 
 export class Camera {
@@ -18,6 +44,7 @@ export class Camera {
     uniformsBuffer: GPUBuffer;
 
     projMat: Mat4 = mat4.create();
+    invProjMat: Mat4 = mat4.create();
     cameraPos: Vec3 = vec3.create(-7, 2, 0);
     cameraFront: Vec3 = vec3.create(0, 0, -1);
     cameraUp: Vec3 = vec3.create(0, 1, 0);
@@ -26,6 +53,7 @@ export class Camera {
     pitch: number = 0;
     moveSpeed: number = 0.004;
     sensitivity: number = 0.15;
+    debug: boolean = false;
 
     static readonly nearPlane = 0.1;
     static readonly farPlane = 1000;
@@ -38,8 +66,20 @@ export class Camera {
         // check `lights.ts` for examples of using `device.createBuffer()`
         //
         // note that you can add more variables (e.g. inverse proj matrix) to this buffer in later parts of the assignment
+        this.uniformsBuffer = device.createBuffer({
+            label: 'camera uniforms',
+            size: this.uniforms.buffer.byteLength,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            mappedAtCreation: false,
+        });
 
         this.projMat = mat4.perspective(toRadians(fovYDegrees), aspectRatio, Camera.nearPlane, Camera.farPlane);
+        this.invProjMat = mat4.invert(this.projMat);
+
+        if (this.debug) {
+            console.log(`projMat: ${this.projMat}`);
+            console.log(`invProjMat: ${this.invProjMat}`);
+        }
 
         this.rotateCamera(0, 0); // set initial camera vectors
 
@@ -129,10 +169,26 @@ export class Camera {
         const viewMat = mat4.lookAt(this.cameraPos, lookPos, [0, 1, 0]);
         const viewProjMat = mat4.mul(this.projMat, viewMat);
         // TODO-1.1: set `this.uniforms.viewProjMat` to the newly calculated view proj mat
+        this.uniforms.viewMat = viewMat;
+        this.uniforms.projMat = this.projMat;
+        this.uniforms.invProjMat = this.invProjMat;
+        this.uniforms.viewProjMat = viewProjMat;
+        this.uniforms.invViewProjMat = mat4.invert(viewProjMat);
+
+        this.uniforms.cameraPos = this.cameraPos;
+        this.uniforms.zNear = Camera.nearPlane;
+        this.uniforms.zFar = Camera.farPlane;
 
         // TODO-2: write to extra buffers needed for light clustering here
 
         // TODO-1.1: upload `this.uniforms.buffer` (host side) to `this.uniformsBuffer` (device side)
         // check `lights.ts` for examples of using `device.queue.writeBuffer()`
+        device.queue.writeBuffer(
+            this.uniformsBuffer, // destination GPU buffer
+            0, // byte offset within the buffer
+            this.uniforms.buffer, // source ArrayBuffer (host-side)
+            0, // byte offset within the source buffer
+            this.uniforms.buffer.byteLength // number of bytes to copy
+        );
     }
 }
