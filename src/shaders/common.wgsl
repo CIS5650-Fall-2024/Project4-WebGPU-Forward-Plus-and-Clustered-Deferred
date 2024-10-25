@@ -10,10 +10,24 @@ struct LightSet {
     lights: array<Light>
 }
 
-// TODO-2: you may want to create a ClusterSet struct similar to LightSet
+// declare the cluster index data that stores all the indices for all the clusters
+struct cluster_index_data {
+    indices: array<u32>
+};
 
 struct CameraUniforms {
-    // TODO-1.3: add an entry for the view proj mat (of type mat4x4f)
+    
+    // declare the view-projection matrix
+    matrix: mat4x4f,
+    
+    // declare the camera vector containing the camera properties
+    camera: vec4f,
+    
+    // declare the inverse projection matrix
+    inverse_projection: mat4x4f,
+    
+    // declare the inverse view matrix
+    inverse_view: mat4x4f,
 }
 
 // CHECKITOUT: this special attenuation function ensures lights don't affect geometry outside the maximum light radius

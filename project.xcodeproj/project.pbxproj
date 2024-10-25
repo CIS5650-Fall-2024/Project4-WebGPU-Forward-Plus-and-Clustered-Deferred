@@ -1,0 +1,229 @@
+// !$*UTF8*$!
+{
+    archiveVersion = 1;
+    classes = {
+    };
+    objectVersion = 56;
+    objects = {
+        000000000000000000000000 = {
+            isa = PBXProject;
+            attributes = {
+                BuildIndependentTargetsInParallel = 1;
+                LastUpgradeCheck = 1540;
+            };
+            buildConfigurationList = 000000000000000000000001;
+            compatibilityVersion = "Xcode 14.0";
+            developmentRegion = en;
+            hasScannedForEncodings = 0;
+            knownRegions = (
+                en,
+                Base,
+            );
+            mainGroup = 000000000000000000000002;
+            projectDirPath = "";
+            projectRoot = "";
+            targets = (
+            );
+        };
+        000000000000000000000001 = {
+            isa = XCConfigurationList;
+            buildConfigurations = (
+                000000000000000000000003,
+                000000000000000000000004,
+            );
+            defaultConfigurationIsVisible = 0;
+            defaultConfigurationName = Release;
+        };
+        000000000000000000000002 = {
+            isa = PBXGroup;
+            children = (
+                000000000000000000000005,
+            );
+            sourceTree = "<group>";
+        };
+        000000000000000000000003 = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+            };
+            name = Debug;
+        };
+        000000000000000000000004 = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+            };
+            name = Release;
+        };
+        000000000000000000000005 = {
+            isa = PBXGroup;
+            children = (
+                000000000000000000000006,
+                000000000000000000000007,
+                000000000000000000000008,
+                000000000000000000000009,
+                00000000000000000000000A,
+                00000000000000000000000B,
+            );
+            path = src;
+            sourceTree = "<group>";
+        };
+        000000000000000000000006 = {
+            isa = PBXGroup;
+            children = (
+                00000000000000000000000C,
+                00000000000000000000000D,
+                00000000000000000000000E,
+            );
+            path = renderers;
+            sourceTree = "<group>";
+        };
+        000000000000000000000007 = {
+            isa = PBXGroup;
+            children = (
+                00000000000000000000000F,
+                000000000000000000000010,
+                000000000000000000000011,
+                000000000000000000000012,
+                000000000000000000000013,
+                000000000000000000000014,
+                000000000000000000000015,
+                000000000000000000000016,
+                000000000000000000000017,
+                000000000000000000000018,
+            );
+            path = shaders;
+            sourceTree = "<group>";
+        };
+        000000000000000000000008 = {
+            isa = PBXGroup;
+            children = (
+                000000000000000000000019,
+                00000000000000000000001A,
+                00000000000000000000001B,
+                00000000000000000000001C,
+            );
+            path = stage;
+            sourceTree = "<group>";
+        };
+        000000000000000000000009 = {
+            isa = PBXFileReference;
+            lastKnownFileType = sourcecode.typescript;
+            path = main.ts;
+            sourceTree = "<group>";
+        };
+        00000000000000000000000A = {
+            isa = PBXFileReference;
+            lastKnownFileType = sourcecode.typescript;
+            path = math_util.ts;
+            sourceTree = "<group>";
+        };
+        00000000000000000000000B = {
+            isa = PBXFileReference;
+            lastKnownFileType = sourcecode.typescript;
+            path = renderer.ts;
+            sourceTree = "<group>";
+        };
+        00000000000000000000000C = {
+            isa = PBXFileReference;
+            lastKnownFileType = sourcecode.typescript;
+            path = clustered_deferred.ts;
+            sourceTree = "<group>";
+        };
+        00000000000000000000000D = {
+            isa = PBXFileReference;
+            lastKnownFileType = sourcecode.typescript;
+            path = forward_plus.ts;
+            sourceTree = "<group>";
+        };
+        00000000000000000000000E = {
+            isa = PBXFileReference;
+            lastKnownFileType = sourcecode.typescript;
+            path = naive.ts;
+            sourceTree = "<group>";
+        };
+        00000000000000000000000F = {
+            isa = PBXFileReference;
+            lastKnownFileType = text;
+            path = clustered_deferred_fullscreen.fs.wgsl;
+            sourceTree = "<group>";
+        };
+        000000000000000000000010 = {
+            isa = PBXFileReference;
+            lastKnownFileType = text;
+            path = clustered_deferred_fullscreen.vs.wgsl;
+            sourceTree = "<group>";
+        };
+        000000000000000000000011 = {
+            isa = PBXFileReference;
+            lastKnownFileType = text;
+            path = clustered_deferred.fs.wgsl;
+            sourceTree = "<group>";
+        };
+        000000000000000000000012 = {
+            isa = PBXFileReference;
+            lastKnownFileType = text;
+            path = clustering.cs.wgsl;
+            sourceTree = "<group>";
+        };
+        000000000000000000000013 = {
+            isa = PBXFileReference;
+            lastKnownFileType = text;
+            path = common.wgsl;
+            sourceTree = "<group>";
+        };
+        000000000000000000000014 = {
+            isa = PBXFileReference;
+            lastKnownFileType = text;
+            path = forward_plus.fs.wgsl;
+            sourceTree = "<group>";
+        };
+        000000000000000000000015 = {
+            isa = PBXFileReference;
+            lastKnownFileType = text;
+            path = move_lights.cs.wgsl;
+            sourceTree = "<group>";
+        };
+        000000000000000000000016 = {
+            isa = PBXFileReference;
+            lastKnownFileType = text;
+            path = naive.fs.wgsl;
+            sourceTree = "<group>";
+        };
+        000000000000000000000017 = {
+            isa = PBXFileReference;
+            lastKnownFileType = text;
+            path = naive.vs.wgsl;
+            sourceTree = "<group>";
+        };
+        000000000000000000000018 = {
+            isa = PBXFileReference;
+            lastKnownFileType = sourcecode.typescript;
+            path = shaders.ts;
+            sourceTree = "<group>";
+        };
+        000000000000000000000019 = {
+            isa = PBXFileReference;
+            lastKnownFileType = sourcecode.typescript;
+            path = camera.ts;
+            sourceTree = "<group>";
+        };
+        00000000000000000000001A = {
+            isa = PBXFileReference;
+            lastKnownFileType = sourcecode.typescript;
+            path = lights.ts;
+            sourceTree = "<group>";
+        };
+        00000000000000000000001B = {
+            isa = PBXFileReference;
+            lastKnownFileType = sourcecode.typescript;
+            path = scene.ts;
+            sourceTree = "<group>";
+        };
+        00000000000000000000001C = {
+            isa = PBXFileReference;
+            lastKnownFileType = sourcecode.typescript;
+            path = stage.ts;
+            sourceTree = "<group>";
+        };
+    };
+    rootObject = 000000000000000000000000;
+}
