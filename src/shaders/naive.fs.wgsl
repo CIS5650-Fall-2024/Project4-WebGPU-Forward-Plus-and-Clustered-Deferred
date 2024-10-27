@@ -25,5 +25,6 @@ fn main(in: FragmentInput) -> @location(0) vec4f
     }
 
     var finalColor = diffuseColor.rgb * totalLightContrib;
+    // var finalColor = in.nor;
     return vec4(finalColor, 1);
 }
