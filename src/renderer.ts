@@ -136,6 +136,10 @@ export abstract class Renderer {
         this.camera.onFrame(deltaTime);
         this.lights.onFrame(time);
 
+        // Set camera attributes
+        this.camera.width = canvas.width;
+        this.camera.height = canvas.height;
+
         this.stats.begin();
 
         this.draw();
