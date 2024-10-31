@@ -1,5 +1,5 @@
-import { vec3 } from "wgpu-matrix";
-import { device } from "../renderer";
+import { vec3, vec2 } from "wgpu-matrix";
+import { device, canvas} from "../renderer";
 
 import * as shaders from '../shaders/shaders';
 import { Camera } from "./camera";
@@ -29,7 +29,20 @@ export class Lights {
     moveLightsComputePipeline: GPUComputePipeline;
 
     // TODO-2: add layouts, pipelines, textures, etc. needed for light clustering here
+    // webgpu related
+    clusteringComputeBindGroupLayout: GPUBindGroupLayout;
+    clusteringComputeBindGroup: GPUBindGroup;
+    clusteringComputePipeline: GPUComputePipeline;
+    // cluster param
+    screenDimensions = vec2.fromValues(canvas.width, canvas.height);
+    static readonly clusterPerDim = 16;
+    static readonly maxLightsPerCluster = 5000;
+    // cluster data
+    static readonly numFloatsPerCluster = Lights.maxLightsPerCluster + 1; // each indices is just index
+    static readonly clusterArraySize = Lights.clusterPerDim * Lights.clusterPerDim * Lights.clusterPerDim;
+    clusterSetStorageBuffer: GPUBuffer;
 
+    maxLightsPerClusterUniformBuffer: GPUBuffer;
     constructor(camera: Camera) {
         this.camera = camera;
 
@@ -43,6 +56,12 @@ export class Lights {
 
         this.timeUniformBuffer = device.createBuffer({
             label: "time uniform",
+            size: 4,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
+
+        this.maxLightsPerClusterUniformBuffer = device.createBuffer({
+            label: "max lights per cluster uniform",
             size: 4,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
@@ -94,6 +113,84 @@ export class Lights {
         });
 
         // TODO-2: initialize layouts, pipelines, textures, etc. needed for light clustering here
+        this.clusterSetStorageBuffer = device.createBuffer({
+            label: "cluster set storage buffer",
+            size: Lights.clusterArraySize * Lights.numFloatsPerCluster * 4, // each float is 4 bytes
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC
+        });
+        this.createCleanDeviceClusterArray();
+        this.clusteringComputeBindGroupLayout = device.createBindGroupLayout({
+            label: "clustering compute bind group layout",
+            entries: [
+                {
+                    binding: 0,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "uniform" }
+                },
+                { // inverse proj mat
+                    binding: 1,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "uniform" }
+                },
+                { // inverse view mat
+                    binding: 2,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "uniform" }
+                },
+                { // lightSet
+                    binding: 3,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "storage" }
+                },
+                { // clusterSet
+                    binding: 4,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "storage" }
+                }
+            ]
+        });
+
+        this.clusteringComputeBindGroup = device.createBindGroup({
+            label: "clustering compute bind group",
+            layout: this.clusteringComputeBindGroupLayout,
+            entries: [
+                {
+                    binding: 0,
+                    resource: { buffer: this.maxLightsPerClusterUniformBuffer }
+                },
+                {
+                    binding: 1,
+                    resource: { buffer: this.camera.uniformsInverseProjBuffer }
+                },
+                {
+                    binding: 2,
+                    resource: { buffer: this.camera.uniformsInverseViewBuffer }
+                },
+                {
+                    binding: 3,
+                    resource: { buffer: this.lightSetStorageBuffer }
+                },
+                {
+                    binding: 4,
+                    resource: { buffer: this.clusterSetStorageBuffer }
+                }
+            ]
+        });
+
+        this.clusteringComputePipeline = device.createComputePipeline({
+            label: "clustering compute pipeline",
+            layout: device.createPipelineLayout({
+                label: "clustering compute pipeline layout",
+                bindGroupLayouts: [ this.clusteringComputeBindGroupLayout ]
+            }),
+            compute: {
+                module: device.createShaderModule({
+                    label: "clustering compute shader",
+                    code: shaders.clusteringComputeSrc
+                }),
+                entryPoint: "main"
+            }
+        });
     }
 
     private populateLightsBuffer() {
@@ -110,13 +207,34 @@ export class Lights {
         device.queue.writeBuffer(this.lightSetStorageBuffer, 0, new Uint32Array([this.numLights]));
     }
 
+    updateMaxLightsPerClusterUniform() {
+        device.queue.writeBuffer(this.maxLightsPerClusterUniformBuffer, 0, new Uint32Array([Lights.maxLightsPerCluster]));
+    }
+    
+    createCleanDeviceClusterArray() {
+        device.queue.writeBuffer(this.clusterSetStorageBuffer, 0, new Float32Array(Lights.clusterArraySize * Lights.numFloatsPerCluster));
+    }
+
     doLightClustering(encoder: GPUCommandEncoder) {
         // TODO-2: run the light clustering compute pass(es) here
         // implementing clustering here allows for reusing the code in both Forward+ and Clustered Deferred
+        const computePass = encoder.beginComputePass();
+        computePass.setPipeline(this.clusteringComputePipeline);
+        computePass.setBindGroup(0, this.clusteringComputeBindGroup);
+        const workgroupCount = Math.ceil(Math.pow(Lights.clusterPerDim, 3) / shaders.constants.moveLightsWorkgroupSize);
+        computePass.dispatchWorkgroups(workgroupCount);
+        computePass.end();
+
+        var logFlag = false ;
+
+        if (logFlag) {
+            readClusterSetBuffer(device, this.clusterSetStorageBuffer);
+        }
     }
 
     // CHECKITOUT: this is where the light movement compute shader is dispatched from the host
     onFrame(time: number) {
+        this.updateMaxLightsPerClusterUniform();
         device.queue.writeBuffer(this.timeUniformBuffer, 0, new Float32Array([time]));
 
         // not using same encoder as render pass so this doesn't interfere with measuring actual rendering performance
@@ -134,4 +252,53 @@ export class Lights {
 
         device.queue.submit([encoder.finish()]);
     }
+
+    
 }
+
+async function readClusterSetBuffer(device, clusterSetBuffer) {
+    // Create a staging buffer
+    const stagingBuffer = device.createBuffer({
+      size: clusterSetBuffer.size,
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
+    });
+  
+    // Create a command encoder
+    const commandEncoder = device.createCommandEncoder();
+  
+    // Copy from the cluster set buffer to the staging buffer
+    commandEncoder.copyBufferToBuffer(
+      clusterSetBuffer, 0,
+      stagingBuffer, 0,
+      clusterSetBuffer.size
+    );
+  
+    // Submit the commands
+    device.queue.submit([commandEncoder.finish()]);
+  
+    // Map the staging buffer
+    await stagingBuffer.mapAsync(GPUMapMode.READ);
+  
+    // Get the mapped range
+    const arrayBuffer = stagingBuffer.getMappedRange();
+  
+    // Create a view into the buffer
+    const data = new Uint32Array(arrayBuffer);
+  
+    // Assuming each Cluster has a fixed size of 501 uint32 elements (1 for numLights + 5000 for lightIndices)
+    const clusterSize = 5001;
+    const numClusters = data.length / clusterSize;
+    
+    var totalLights = 0;
+    // Log the numLights for each cluster
+    for (let i = 0; i < numClusters; i++) {
+      const clusterStart = i * clusterSize;
+      const numLights = data[clusterStart];
+    //   console.log(`Cluster ${i}: numLights = ${numLights}`);
+      totalLights += numLights;
+    }
+    console.log(`Total lights: ${totalLights}`);
+  
+    // Unmap the buffer
+    stagingBuffer.unmap();
+  }
