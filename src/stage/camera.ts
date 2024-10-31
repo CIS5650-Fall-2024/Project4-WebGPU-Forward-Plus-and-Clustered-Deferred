@@ -3,14 +3,30 @@ import { toRadians } from "../math_util";
 import { device, canvas, fovYDegrees, aspectRatio } from "../renderer";
 
 class CameraUniforms {
-    readonly buffer = new ArrayBuffer(16 * 4);
+    readonly buffer = new ArrayBuffer(16 * 4 * 5);
     private readonly floatView = new Float32Array(this.buffer);
 
     set viewProjMat(mat: Float32Array) {
         // TODO-1.1: set the first 16 elements of `this.floatView` to the input `mat`
+        this.floatView.set(mat.subarray(0, 16), 0);
     }
 
     // TODO-2: add extra functions to set values needed for light clustering here
+    set invViewProjMat(mat: Float32Array) {
+        this.floatView.set(mat.subarray(0, 16), 16);
+    }
+
+    set viewMat(mat: Float32Array) {
+        this.floatView.set(mat.subarray(0, 16), 32);
+    }
+
+    set projMat(mat: Float32Array) {
+        //this.floatView.set(mat.subarray(0, 16), 48);
+    }
+
+    set invProjMat(mat: Float32Array) {
+        this.floatView.set(mat.subarray(0, 16), 64);
+    }
 }
 
 export class Camera {
@@ -34,6 +50,11 @@ export class Camera {
 
     constructor () {
         // TODO-1.1: set `this.uniformsBuffer` to a new buffer of size `this.uniforms.buffer.byteLength`
+        this.uniformsBuffer = device.createBuffer({
+            label: "camera uniforms",
+            size: this.uniforms.buffer.byteLength,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
         // ensure the usage is set to `GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST` since we will be copying to this buffer
         // check `lights.ts` for examples of using `device.createBuffer()`
         //
@@ -129,10 +150,16 @@ export class Camera {
         const viewMat = mat4.lookAt(this.cameraPos, lookPos, [0, 1, 0]);
         const viewProjMat = mat4.mul(this.projMat, viewMat);
         // TODO-1.1: set `this.uniforms.viewProjMat` to the newly calculated view proj mat
-
+        this.uniforms.viewProjMat = viewProjMat;
         // TODO-2: write to extra buffers needed for light clustering here
+        const projMat = this.projMat;
+        this.uniforms.invProjMat = projMat;
+        this.uniforms.viewMat = viewMat;
+        this.uniforms.invViewProjMat = mat4.invert(viewProjMat);
+        this.uniforms.projMat = projMat;
 
         // TODO-1.1: upload `this.uniforms.buffer` (host side) to `this.uniformsBuffer` (device side)
         // check `lights.ts` for examples of using `device.queue.writeBuffer()`
+        device.queue.writeBuffer(this.uniformsBuffer, 0, this.uniforms.buffer);
     }
 }

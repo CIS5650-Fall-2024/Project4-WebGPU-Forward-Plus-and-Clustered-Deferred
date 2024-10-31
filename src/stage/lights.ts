@@ -29,6 +29,15 @@ export class Lights {
     moveLightsComputePipeline: GPUComputePipeline;
 
     // TODO-2: add layouts, pipelines, textures, etc. needed for light clustering here
+    //16 for offset, 4 bytes per light for idx, x * y * z partitioning of scene for clusters
+    static readonly clusterSetArraySize =  16 + (Lights.maxNumLights * 4) 
+    * shaders.constants.numClustersX * shaders.constants.numClustersY * shaders.constants.numClustersZ;
+
+    clusterLightsComputeBindGroupLayout: GPUBindGroupLayout;
+    clusterLightsComputeBindGroup: GPUBindGroup;
+    clusterLightsComputePipeline: GPUComputePipeline;
+
+    clusterSetStorageBuffer: GPUBuffer;
 
     constructor(camera: Camera) {
         this.camera = camera;
@@ -94,6 +103,66 @@ export class Lights {
         });
 
         // TODO-2: initialize layouts, pipelines, textures, etc. needed for light clustering here
+        this.clusterSetStorageBuffer = device.createBuffer({
+            label: "cluster sets",
+            size: Lights.clusterSetArraySize,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+        });
+
+        this.clusterLightsComputeBindGroupLayout = device.createBindGroupLayout({
+            label: "cluster lights compute bind group layout",
+            entries: [
+                { // lightSet
+                    binding: 0,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "read-only-storage" }
+                },
+                { //cameraSet
+                    binding: 1,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "uniform" }
+                },
+                {
+                    binding: 2,
+                    visibility: GPUShaderStage.COMPUTE, // Cluster Result - Write
+                    buffer: { type: "storage" }
+                }
+            ]
+        });
+
+        this.clusterLightsComputeBindGroup = device.createBindGroup({
+            label: "cluster lights compute bind group",
+            layout: this.clusterLightsComputeBindGroupLayout,
+            entries: [
+                {
+                    binding: 0,
+                    resource: { buffer: this.lightSetStorageBuffer }
+                },
+                {
+                    binding: 1,
+                    resource: { buffer: this.camera.uniformsBuffer }
+                },
+                {
+                    binding: 2,
+                    resource: { buffer: this.clusterSetStorageBuffer }
+                }
+            ]
+        });
+
+        this.clusterLightsComputePipeline = device.createComputePipeline({
+            label: "cluster lights compute pipeline",
+            layout: device.createPipelineLayout({
+                label: "cluster lights compute pipeline layout",
+                bindGroupLayouts: [ this.clusterLightsComputeBindGroupLayout ]
+            }),
+            compute: {
+                module: device.createShaderModule({
+                    label: "cluster lights compute shader",
+                    code: shaders.clusteringComputeSrc
+                }),
+                entryPoint: "main"
+            }
+        });
     }
 
     private populateLightsBuffer() {
@@ -113,6 +182,11 @@ export class Lights {
     doLightClustering(encoder: GPUCommandEncoder) {
         // TODO-2: run the light clustering compute pass(es) here
         // implementing clustering here allows for reusing the code in both Forward+ and Clustered Deferred
+        const computePass = encoder.beginComputePass();
+        computePass.setPipeline(this.clusterLightsComputePipeline);
+        computePass.setBindGroup(0, this.clusterLightsComputeBindGroup);
+        computePass.dispatchWorkgroups(16, 16, 16);
+        computePass.end();
     }
 
     // CHECKITOUT: this is where the light movement compute shader is dispatched from the host
